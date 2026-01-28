@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>機甲矩陣 v1.6 (大字注音版)</title>
+    <title>機甲矩陣 v1.7 (大字換行版)</title>
     <style>
         :root {
             --primary: #00d2d3;
@@ -12,21 +12,19 @@
             --matrix-bg: rgba(0, 210, 211, 0.15);
         }
 
-        /* ★★★ CSS 防縮放與觸控優化 ★★★ */
         * { 
             box-sizing: border-box; 
             user-select: none; -webkit-user-select: none; 
-            touch-action: manipulation; /* 關鍵：只允許點擊和滑動，禁止縮放手勢 */
+            touch-action: manipulation;
         }
 
         body {
             font-family: "Segoe UI", Roboto, "BiauKai", sans-serif;
             background-color: #2f3640;
             margin: 0;
-            overflow: hidden; /* 禁止捲動 */
+            overflow: hidden;
             display: flex; justify-content: center; align-items: center;
             min-height: 100vh; min-height: 100dvh;
-            /* 強制鎖定視窗，防止 iOS 彈性捲動 */
             position: fixed; width: 100%; height: 100%;
         }
 
@@ -38,7 +36,7 @@
 
         .container {
             width: 100%; max-width: 600px;
-            height: 100%; /* 填滿固定視窗 */
+            height: 100%;
             display: flex; flex-direction: column;
             align-items: center; justify-content: space-between;
             padding: 10px 20px max(15px, env(safe-area-inset-bottom));
@@ -115,7 +113,7 @@
             transition: all 0.3s;
             justify-content: center; align-content: center;
             flex-shrink: 1;
-            max-height: 22vh;
+            max-height: 20vh; /* 稍微縮小一點給文字空間 */
             overflow-y: auto;
         }
         
@@ -127,23 +125,24 @@
             filter: drop-shadow(0 0 2px var(--primary));
         }
 
-        /* ★★★ 注音提示區優化 (加大字體) ★★★ */
+        /* ★★★ 注音提示區優化 (換行版) ★★★ */
         #matrix-hint {
             color: #eee; 
-            font-size: 1.6rem; /* 基礎字體加大 */
-            margin-bottom: 2px; /* 距離下方選項近一點 */
+            font-size: 1.6rem; 
+            margin-bottom: 2px;
             text-align: center; 
-            line-height: 1.5; /* 行高稍微緊湊一點 */
-            background: rgba(0,0,0,0.4); padding: 8px 15px; border-radius: 15px;
+            /* 增加行高，避免第二行的注音撞到第一行的字 */
+            line-height: 2.0; 
+            background: rgba(0,0,0,0.4); padding: 5px 15px; border-radius: 15px;
             flex-shrink: 0;
-            white-space: nowrap; /* 防止文字換行 */
+            white-space: normal; /* 允許換行 */
         }
-        ruby { ruby-align: center; }
+        ruby { ruby-align: center; margin: 0 2px; }
         rt { 
-            font-size: 0.75em; /* 注音比例加大 (原本0.6em) */
+            font-size: 0.75em; 
             color: var(--accent); 
             font-weight: normal; 
-            transform: translateY(-5px); /* 稍微往上提 */
+            transform: translateY(-5px); 
         }
 
         #boom-img {
@@ -206,12 +205,11 @@
         #result-screen img { margin-bottom: 10px; }
 
         @media (max-height: 700px) {
-            #hero-img { max-height: 7vh; }
+            #hero-img { max-height: 8vh; }
             .math-display { font-size: 2.5rem; margin: 2px 0; }
             .ans-btn { font-size: 1.8rem; padding: 8px; }
             .matrix-container { gap: 1px; padding: 3px; }
             .matrix-img { width: 12px; height: 12px; }
-            /* 手機版字體特別加大 */
             #matrix-hint { font-size: 1.4rem; } 
         }
     </style>
@@ -297,11 +295,9 @@
         let audioCtx;
         let voiceEnabled = true;
 
-        // ★★★ 強力防縮放邏輯 (JS 層面) ★★★
         document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
         document.addEventListener('dblclick', function(e) { e.preventDefault(); }, { passive: false });
 
-        // ★★★ 核心修復：初始化與喚醒 AudioContext (音效層面) ★★★
         function initAudio() {
             if (!audioCtx) {
                 audioCtx = new AudioContext();
@@ -311,7 +307,6 @@
             }
         }
 
-        // 監聽全域點擊，強制喚醒音效引擎
         document.body.addEventListener('click', function() { initAudio(); }, { once: true });
         document.body.addEventListener('touchstart', function() { initAudio(); }, { once: true });
 
@@ -418,7 +413,7 @@
         };
 
         function startGame(lv) {
-            initAudio(); // 確保遊戲開始時喚醒音效
+            initAudio(); 
             state.level = lv; state.score = 0; state.energy = 100; state.levelProgress = 0; state.isPlaying = true;
             Object.values(els.screens).forEach(el => el.classList.add('hidden'));
             updateUI(); nextQuestion();
@@ -454,7 +449,10 @@
             if(state.level === 3) { els.matrixBox.style.display = 'none'; els.matrixHint.style.display = 'none'; return; }
             els.matrixBox.style.display = 'grid'; els.matrixHint.style.display = 'block';
             els.matrixBox.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
-            const hintHTML = `<ruby>${rows}<rt> </rt></ruby> <ruby>排<rt>ㄆㄞˊ</rt></ruby>，<ruby>每<rt>ㄇㄟˇ</rt></ruby> <ruby>排<rt>ㄆㄞˊ</rt></ruby> <ruby>${cols}<rt> </rt></ruby> <ruby>顆<rt>ㄎㄜ</rt></ruby><ruby>能<rt>ㄋㄥˊ</rt></ruby> <ruby>量<rt>ㄌㄧㄤˋ</rt></ruby> <ruby>核<rt>ㄏㄜˊ</rt></ruby> <ruby>心<rt>ㄒㄧㄣ</rt></ruby>`;
+            
+            // ★★★ 關鍵修改：加入 <br> 標籤與新的行高 ★★★
+            const hintHTML = `<ruby>${rows}<rt> </rt></ruby> <ruby>排<rt>ㄆㄞˊ</rt></ruby>，<br><ruby>每<rt>ㄇㄟˇ</rt></ruby> <ruby>排<rt>ㄆㄞˊ</rt></ruby> <ruby>${cols}<rt> </rt></ruby> <ruby>顆<rt>ㄎㄜ</rt></ruby><ruby>能<rt>ㄋㄥˊ</rt></ruby> <ruby>量<rt>ㄌㄧㄤˋ</rt></ruby> <ruby>核<rt>ㄏㄜˊ</rt></ruby> <ruby>心<rt>ㄒㄧㄣ</rt></ruby>`;
+            
             els.matrixHint.innerHTML = hintHTML;
             for(let i=0; i < rows * cols; i++) {
                 const dot = document.createElement('div'); dot.className = 'matrix-img'; els.matrixBox.appendChild(dot);
