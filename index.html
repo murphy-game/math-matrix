@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>機甲矩陣 v1.5 (完整優化版)</title>
+    <style>
+        :root {
+            --primary: #00d2d3;
+            --accent: #feca57;
+            --danger: #ff4757;
+            --matrix-bg: rgba(0, 210, 211, 0.15);
+        }
+
+        /* ★★★ CSS 防縮放與觸控優化 ★★★ */
+        * { 
+            box-sizing: border-box; 
+            user-select: none; -webkit-user-select: none; 
+            touch-action: manipulation; /* 關鍵：只允許點擊和滑動，禁止縮放手勢 */
+        }
+
+        body {
+            font-family: "Segoe UI", Roboto, "BiauKai", sans-serif;
+            background-color: #2f3640;
+            margin: 0;
+            overflow: hidden; /* 禁止捲動 */
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; min-height: 100dvh;
+            /* 強制鎖定視窗，防止 iOS 彈性捲動 */
+            position: fixed; width: 100%; height: 100%;
+        }
+
+        .battle-bg {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -2; background-size: cover; background-position: center; opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .container {
+            width: 100%; max-width: 600px;
+            height: 100%; /* 填滿固定視窗 */
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: space-between;
+            padding: 10px 20px max(15px, env(safe-area-inset-bottom));
+            position: relative;
+        }
+
+        /* HUD */
+        .hud {
+            width: 100%; display: flex; justify-content: space-between; align-items: center;
+            color: white; font-size: 1rem; font-weight: bold;
+            text-shadow: 0 0 5px var(--primary);
+            z-index: 10; margin-top: 5px;
+            background: rgba(0,0,0,0.4); border-radius: 15px; padding: 5px 15px;
+            flex-shrink: 0;
+        }
+        
+        .icon-btn {
+            background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.5);
+            color: white; border-radius: 8px; cursor: pointer;
+            padding: 5px 10px; font-size: 1.1rem; transition: background 0.2s;
+            margin-left: 5px;
+        }
+
+        /* 能量條 */
+        .energy-container {
+            width: 100%; height: 15px; background: #333;
+            border: 2px solid #fff; border-radius: 10px;
+            margin-top: 5px; position: relative; overflow: hidden;
+            box-shadow: 0 5px 10px rgba(0,0,0,0.3);
+            flex-shrink: 0;
+        }
+        .energy-bar {
+            width: 100%; height: 100%; background: linear-gradient(90deg, #f1c40f, #2ed573);
+            transition: width 0.3s ease-out, background 0.3s;
+        }
+        .progress-text {
+            color: var(--accent); font-weight: bold; margin-top: 2px; font-size: 1rem;
+            text-shadow: 0 2px 2px rgba(0,0,0,0.5);
+            flex-shrink: 0;
+        }
+
+        /* 遊戲區 */
+        .question-zone {
+            flex: 1; width: 100%;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            position: relative;
+            min-height: 0;
+        }
+
+        #hero-img {
+            max-height: 12vh; width: auto; object-fit: contain;
+            filter: drop-shadow(0 0 10px rgba(0,210,211,0.5));
+            margin-bottom: 5px; z-index: 5;
+            transition: transform 0.1s;
+            flex-shrink: 1;
+        }
+
+        .math-display {
+            font-size: 3rem; font-weight: 900; color: #fff;
+            text-shadow: 0 5px 0 #222, 0 0 20px var(--primary);
+            margin: 5px 0; letter-spacing: 2px;
+            display: flex; align-items: center; gap: 10px;
+            flex-shrink: 0;
+        }
+        .operator { color: var(--accent); }
+
+        .matrix-container {
+            display: grid; gap: 4px; padding: 8px;
+            background: var(--matrix-bg);
+            border: 2px solid var(--primary);
+            border-radius: 10px;
+            margin-bottom: 5px;
+            transition: all 0.3s;
+            justify-content: center; align-content: center;
+            flex-shrink: 1;
+            max-height: 25vh;
+            overflow-y: auto;
+        }
+        
+        .matrix-img {
+            width: 18px; height: 18px;
+            background-image: url('energy.png');
+            background-color: var(--primary);
+            background-size: cover; border-radius: 4px;
+            filter: drop-shadow(0 0 3px var(--primary));
+        }
+
+        #matrix-hint {
+            color: #ddd; font-size: 1.1rem; margin-bottom: 5px;
+            text-align: center; line-height: 1.6;
+            background: rgba(0,0,0,0.3); padding: 5px 10px; border-radius: 20px;
+            flex-shrink: 0;
+        }
+        ruby { ruby-align: center; }
+        rt { font-size: 0.6em; color: #feca57; font-weight: normal; transform: translateY(-2px); }
+
+        #boom-img {
+            position: absolute; top: 40%; left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            width: 250px; max-width: 90%; z-index: 20; opacity: 0; pointer-events: none;
+        }
+        .boom-anim { animation: boomPop 0.6s forwards; }
+        @keyframes boomPop {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            10% { opacity: 1; transform: translate(-50%, -50%) scale(1.0); }
+            100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+        }
+
+        .options-grid {
+            width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+            margin-bottom: 10px;
+            flex-shrink: 0;
+        }
+        .ans-btn {
+            background: rgba(255, 255, 255, 0.9);
+            border: 3px solid #fff; border-bottom: 6px solid #ccc;
+            border-radius: 15px;
+            font-size: 2rem; font-weight: bold; color: #333;
+            padding: 10px;
+            cursor: pointer;
+            transition: all 0.1s;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .ans-btn:active { transform: translateY(4px); border-bottom: 3px solid #ccc; background: #ddd; }
+        .wrong-shake { animation: shakeBtn 0.4s; background: #ff4757 !important; color: white !important; }
+        @keyframes shakeBtn { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+        .hero-damage { animation: shakeHero 0.5s; filter: sepia(1) hue-rotate(-50deg) saturate(3) !important; }
+        @keyframes shakeHero {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-10px); }
+            40% { transform: translateX(10px); }
+            60% { transform: translateX(-10px); }
+            80% { transform: translateX(10px); }
+        }
+
+        .overlay-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95);
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            z-index: 100; color: white; text-align: center;
+            padding: 20px;
+        }
+        .menu-btn {
+            background: transparent; border: 2px solid var(--primary);
+            color: white; padding: 15px 30px; margin: 10px;
+            font-size: 1.3rem; border-radius: 50px; cursor: pointer;
+            width: 100%; max-width: 350px; transition: all 0.2s;
+        }
+        .menu-btn:active { background: var(--primary); color: black; transform: scale(0.95); }
+        .level-tag { font-size: 0.9rem; opacity: 0.8; display: block; margin-top: 5px; color: #ffeb3b; }
+        .hidden { display: none !important; }
+        
+        #result-screen img { margin-bottom: 10px; }
+
+        @media (max-height: 700px) {
+            #hero-img { max-height: 8vh; }
+            .math-display { font-size: 2.5rem; margin: 2px 0; }
+            .ans-btn { font-size: 1.8rem; padding: 8px; }
+            .matrix-container { gap: 2px; padding: 5px; }
+            .matrix-img { width: 15px; height: 15px; }
+            #matrix-hint { font-size: 0.9rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="battle-bg" style="background-image: url('bg.png');"></div>
+
+    <div class="container">
+        <div class="hud">
+            <div style="display: flex; align-items: center;">
+                <button class="icon-btn" onclick="backToMode()">⏮ 選單</button>
+                <button class="icon-btn" id="voice-btn" onclick="toggleVoice()">🗣️</button>
+            </div>
+            <div style="display: flex; align-items: center;">
+                <span>Score: <span id="score-display">0</span></span>
+            </div>
+        </div>
+
+        <div class="energy-container">
+            <div class="energy-bar" id="energy-bar"></div>
+        </div>
+        <div id="progress-text" class="progress-text">進度: 0 / 10</div>
+
+        <div class="question-zone">
+            <img id="boom-img" src="boom.png">
+            <img id="hero-img" src="hero.png">
+            
+            <div class="math-display">
+                <span id="num1">3</span>
+                <span class="operator">&times;</span>
+                <span id="num2">4</span>
+                <span class="operator">=</span>
+                <span class="operator">?</span>
+            </div>
+
+            <div id="matrix-box" class="matrix-container"></div>
+            <div id="matrix-hint"></div>
+        </div>
+
+        <div class="options-grid" id="options-box"></div>
+    </div>
+
+    <div id="mode-screen" class="overlay-screen">
+        <h1 style="color: var(--primary);">機甲矩陣</h1>
+        <p>圖像理解 • 能量挑戰</p>
+        <button class="menu-btn" onclick="startGame(1)">🟢 Lv1 基礎充能 <span class="level-tag">專練 2, 5, 10 的乘法</span></button>
+        <button class="menu-btn" onclick="startGame(2)">🟡 Lv2 核心運轉 <span class="level-tag">專練 3, 4, 6 等中階乘法</span></button>
+        <button class="menu-btn" onclick="startGame(3)">🔴 Lv3 極限超頻 <span class="level-tag">7, 8, 9 與混合挑戰</span></button>
+    </div>
+
+    <div id="levelup-screen" class="overlay-screen hidden">
+        <h1 style="color: #f1c40f;">🎉 充能完成！</h1>
+        <img src="hero.png" style="width: 150px; filter: drop-shadow(0 0 20px gold);">
+        <p>乘法核心已升級！</p>
+        <button class="menu-btn" onclick="goToNextLevel()">🚀 前往下一關</button>
+    </div>
+
+    <div id="victory-screen" class="overlay-screen hidden">
+        <h1 style="color: #2ed573;">🎉 矩陣建構完成！</h1>
+        <img src="win.png" style="width: 150px; margin-bottom: 20px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+        <div style="font-size: 5rem; display:none;">👑</div>
+        <p>你已經精通九九乘法了！</p>
+        <p>最終得分: <span id="victory-score" style="color:#f1c40f">0</span></p>
+        <button class="menu-btn" onclick="backToMode()">⏮ 回到首頁</button>
+    </div>
+
+    <div id="fail-screen" class="overlay-screen hidden">
+        <h1 style="color: #ff4757;">⚠️ 能量耗盡</h1>
+        <img src="lose.png" style="width: 150px; margin: 20px 0;">
+        <p>護盾已歸零，機甲需要修復！</p>
+        <button class="menu-btn" onclick="restartLevel()">🔧 維修並重試</button>
+    </div>
+
+    <div id="rest-screen" class="overlay-screen hidden">
+        <div style="font-size: 3rem;">👀</div>
+        <h1>眼睛休息時間</h1>
+        <p>已經特訓 15 分鐘囉！</p>
+        <p>機甲需要冷卻，請讓眼睛休息一下。</p>
+    </div>
+
+    <script>
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+        let voiceEnabled = true;
+
+        // ★★★ 強力防縮放邏輯 (JS 層面) ★★★
+        // 1. 阻止 iOS 的雙指縮放 (Pinch to zoom)
+        document.addEventListener('gesturestart', function(e) {
+            e.preventDefault();
+        });
+        
+        // 2. 阻止連續點擊放大 (Double tap to zoom)
+        document.addEventListener('dblclick', function(e) {
+            e.preventDefault();
+        }, { passive: false });
+
+        // ★★★ 核心修復：初始化與喚醒 AudioContext (音效層面) ★★★
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        // 監聽全域點擊，強制喚醒音效引擎
+        document.body.addEventListener('click', function() { initAudio(); }, { once: true });
+        document.body.addEventListener('touchstart', function() { initAudio(); }, { once: true });
+
+        const LEVEL_TARGETS = { 1: 10, 2: 15, 3: 20 };
+        
+        let totalTimePlayed = 0;
+        setInterval(() => {
+            totalTimePlayed++;
+            if(totalTimePlayed >= 900) {
+                document.getElementById('rest-screen').classList.remove('hidden');
+                state.isPlaying = false;
+            }
+        }, 1000);
+
+        function playSound(type) {
+            // 播放前檢查並嘗試喚醒
+            if (!audioCtx) initAudio();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            if(type === 'correct') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.3);
+            } else if(type === 'wrong') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                osc.frequency.linearRampToValueAtTime(50, audioCtx.currentTime + 0.4);
+                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.4);
+            } else if(type === 'levelup') {
+                playArpeggio([523, 659, 784, 1046]); 
+                speakText("耶！晉級了！"); return;
+            } else if(type === 'victory') {
+                playArpeggio([523, 523, 523, 659, 784, 1046, 1318], 0.15); return;
+            } else if(type === 'gameover') {
+                playArpeggio([300, 250, 200, 150], 0.2); return;
+            }
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+        }
+
+        function playArpeggio(notes, speed = 0.1) {
+            if (!audioCtx) initAudio();
+            notes.forEach((freq, i) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime + i * speed);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime + i * speed);
+                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + i * speed + speed);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(audioCtx.currentTime + i * speed);
+                osc.stop(audioCtx.currentTime + i * speed + speed);
+            });
+        }
+
+        function speakText(text) {
+            if(!voiceEnabled || !window.speechSynthesis) return;
+            setTimeout(() => {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'zh-TW'; utterance.rate = 1; utterance.pitch = 1.4;
+                window.speechSynthesis.speak(utterance);
+            }, 500);
+        }
+
+        function speakQuestion(n1, n2) {
+            if(!voiceEnabled || !window.speechSynthesis) return;
+            window.speechSynthesis.cancel();
+            
+            const qText = `${n1} 乘 ${n2} 等於`;
+            const utt1 = new SpeechSynthesisUtterance(qText);
+            utt1.lang = 'zh-TW'; utt1.rate = 0.9;
+            
+            if(state.level < 3) {
+                const hintText = `也就是 ${n1} 排，每排 ${n2} 顆`;
+                const utt2 = new SpeechSynthesisUtterance(hintText);
+                utt2.lang = 'zh-TW'; utt2.rate = 0.9;
+                utt1.onend = () => { setTimeout(() => window.speechSynthesis.speak(utt2), 300); };
+            }
+            window.speechSynthesis.speak(utt1);
+        }
+
+        function toggleVoice() {
+            voiceEnabled = !voiceEnabled;
+            document.getElementById('voice-btn').innerText = voiceEnabled ? '🗣️' : '🔇';
+        }
+
+        let state = { level: 1, score: 0, energy: 100, answer: 0, isPlaying: false, levelProgress: 0 };
+        
+        const els = {
+            num1: document.getElementById('num1'), num2: document.getElementById('num2'),
+            matrixBox: document.getElementById('matrix-box'), matrixHint: document.getElementById('matrix-hint'),
+            options: document.getElementById('options-box'), score: document.getElementById('score-display'),
+            hero: document.getElementById('hero-img'), boom: document.getElementById('boom-img'),
+            energyBar: document.getElementById('energy-bar'), progressText: document.getElementById('progress-text'),
+            screens: { 
+                mode: document.getElementById('mode-screen'), levelup: document.getElementById('levelup-screen'),
+                victory: document.getElementById('victory-screen'), fail: document.getElementById('fail-screen')
+            }
+        };
+
+        function startGame(lv) {
+            initAudio(); // 確保遊戲開始時喚醒音效
+            state.level = lv; state.score = 0; state.energy = 100; state.levelProgress = 0; state.isPlaying = true;
+            Object.values(els.screens).forEach(el => el.classList.add('hidden'));
+            updateUI(); nextQuestion();
+        }
+
+        function updateUI() {
+            let target = LEVEL_TARGETS[state.level];
+            els.progressText.innerText = `進度: ${state.levelProgress} / ${target}`;
+            if(state.energy < 0) state.energy = 0; if(state.energy > 100) state.energy = 100;
+            els.energyBar.style.width = state.energy + "%";
+            if(state.energy < 30) els.energyBar.style.background = "#ff4757";
+            else els.energyBar.style.background = "linear-gradient(90deg, #f1c40f, #2ed573)";
+        }
+
+        function nextQuestion() {
+            if(!state.isPlaying) return;
+            let n1, n2;
+            const poolLv1 = [2, 5, 10]; const poolLv2 = [3, 4, 6]; 
+            if(state.level === 1) { n1 = poolLv1[Math.floor(Math.random() * poolLv1.length)]; n2 = Math.floor(Math.random() * 9) + 1; } 
+            else if(state.level === 2) { n1 = poolLv2[Math.floor(Math.random() * poolLv2.length)]; n2 = Math.floor(Math.random() * 9) + 1; } 
+            else { 
+                if(Math.random() > 0.3) n1 = Math.floor(Math.random() * 3) + 7; else n1 = Math.floor(Math.random() * 4) + 3; 
+                n2 = Math.floor(Math.random() * 9) + 1; 
+            }
+            state.answer = n1 * n2;
+            els.num1.innerText = n1; els.num2.innerText = n2;
+            els.boom.classList.remove('boom-anim'); els.hero.classList.remove('hero-damage');
+            renderMatrix(n1, n2); generateOptions(state.answer); speakQuestion(n1, n2);
+        }
+
+        function renderMatrix(rows, cols) {
+            els.matrixBox.innerHTML = '';
+            if(state.level === 3) { els.matrixBox.style.display = 'none'; els.matrixHint.style.display = 'none'; return; }
+            els.matrixBox.style.display = 'grid'; els.matrixHint.style.display = 'block';
+            els.matrixBox.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+            const hintHTML = `<ruby>${rows}<rt> </rt></ruby> <ruby>排<rt>ㄆㄞˊ</rt></ruby>，<ruby>每<rt>ㄇㄟˇ</rt></ruby> <ruby>排<rt>ㄆㄞˊ</rt></ruby> <ruby>${cols}<rt> </rt></ruby> <ruby>顆<rt>ㄎㄜ</rt></ruby><ruby>能<rt>ㄋㄥˊ</rt></ruby> <ruby>量<rt>ㄌㄧㄤˋ</rt></ruby> <ruby>核<rt>ㄏㄜˊ</rt></ruby> <ruby>心<rt>ㄒㄧㄣ</rt></ruby>`;
+            els.matrixHint.innerHTML = hintHTML;
+            for(let i=0; i < rows * cols; i++) {
+                const dot = document.createElement('div'); dot.className = 'matrix-img'; els.matrixBox.appendChild(dot);
+            }
+        }
+
+        function generateOptions(correct) {
+            els.options.innerHTML = '';
+            let opts = new Set(); opts.add(correct);
+            while(opts.size < 4) {
+                let offset = Math.floor(Math.random() * 5) - 2; if(offset === 0) offset = 3;
+                let fake = correct + (offset * (Math.random() > 0.5 ? 1 : -1));
+                if(fake > 0 && fake !== correct) opts.add(fake); else opts.add(correct + Math.floor(Math.random()*10)+1);
+            }
+            let optsArr = Array.from(opts).sort(() => Math.random() - 0.5);
+            optsArr.forEach(val => {
+                const btn = document.createElement('div'); btn.className = 'ans-btn'; btn.innerText = val;
+                btn.addEventListener('pointerdown', (e) => checkAnswer(val, e.target)); els.options.appendChild(btn);
+            });
+        }
+
+        function checkAnswer(val, btn) {
+            if(!state.isPlaying) return;
+            if(val === state.answer) {
+                playSound('correct'); state.score += 100; state.levelProgress++; state.energy += 10;
+                els.score.innerText = state.score; updateUI();
+                els.hero.classList.add('hero-shoot'); setTimeout(() => els.hero.classList.remove('hero-shoot'), 200);
+                let target = LEVEL_TARGETS[state.level];
+                if(state.levelProgress >= target) { if(state.level < 3) showLevelUp(); else showVictory(); } else nextQuestion();
+            } else {
+                playSound('wrong'); state.energy -= 20; updateUI();
+                els.boom.classList.remove('boom-anim'); void els.boom.offsetWidth; els.boom.classList.add('boom-anim');
+                els.hero.classList.add('hero-damage'); setTimeout(() => els.hero.classList.remove('hero-damage'), 500);
+                btn.classList.add('wrong-shake'); setTimeout(() => btn.classList.remove('wrong-shake'), 400);
+                if(state.energy <= 0) setTimeout(gameOver, 800);
+            }
+        }
+
+        function showLevelUp() { state.isPlaying = false; playSound('levelup'); els.screens.levelup.classList.remove('hidden'); }
+        function showVictory() { state.isPlaying = false; document.getElementById('victory-score').innerText = state.score; playSound('victory'); els.screens.victory.classList.remove('hidden'); }
+        function gameOver() { state.isPlaying = false; playSound('gameover'); els.screens.fail.classList.remove('hidden'); }
+        function restartLevel() { startGame(state.level); }
+        function goToNextLevel() { state.level++; startGame(state.level); }
+        function backToMode() { state.isPlaying = false; Object.values(els.screens).forEach(el => el.classList.add('hidden')); els.screens.mode.classList.remove('hidden'); }
+    </script>
+</body>
+</html>
