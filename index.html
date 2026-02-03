@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>機甲矩陣 v1.8 (單位量邏輯版)</title>
+    <title>機甲矩陣 v1.9 (除錯修復版)</title>
     <style>
         :root {
             --primary: #00d2d3;
@@ -113,7 +113,6 @@
             transition: all 0.3s;
             justify-content: center; align-content: center;
             flex-shrink: 1;
-            /* 讓矩陣圖區域稍微大一點，容納直式排列 */
             max-height: 25vh; 
             overflow-y: auto;
         }
@@ -126,7 +125,6 @@
             filter: drop-shadow(0 0 2px var(--primary));
         }
 
-        /* ★★★ 注音提示區 (配合新邏輯) ★★★ */
         #matrix-hint {
             color: #eee; 
             font-size: 1.6rem; 
@@ -291,6 +289,7 @@
     </div>
 
     <script>
+        console.log("程式開始載入 v1.9...");
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         let audioCtx;
         let voiceEnabled = true;
@@ -385,7 +384,6 @@
             utt1.lang = 'zh-TW'; utt1.rate = 0.9;
             
             if(state.level < 3) {
-                // ★★★ 語音邏輯修正：每排 n1 顆，共 n2 排 ★★★
                 const hintText = `也就是每排 ${n1} 顆，共有 ${n2} 排`;
                 const utt2 = new SpeechSynthesisUtterance(hintText);
                 utt2.lang = 'zh-TW'; utt2.rate = 0.9;
@@ -414,6 +412,7 @@
         };
 
         function startGame(lv) {
+            console.log("遊戲開始: Lv" + lv);
             initAudio(); 
             state.level = lv; state.score = 0; state.energy = 100; state.levelProgress = 0; state.isPlaying = true;
             Object.values(els.screens).forEach(el => el.classList.add('hidden'));
@@ -443,26 +442,18 @@
             els.num1.innerText = n1; els.num2.innerText = n2;
             els.boom.classList.remove('boom-anim'); els.hero.classList.remove('hero-damage');
             
-            // 這裡傳入 n1 (單位量/每排幾顆) 和 n2 (單位數/幾排)
             renderMatrix(n1, n2); 
             generateOptions(state.answer); 
             speakQuestion(n1, n2);
         }
 
         function renderMatrix(unit, quantity) {
-            // unit = 每排幾顆 (n1)
-            // quantity = 有幾排 (n2)
-            
             els.matrixBox.innerHTML = '';
             if(state.level === 3) { els.matrixBox.style.display = 'none'; els.matrixHint.style.display = 'none'; return; }
             els.matrixBox.style.display = 'grid'; els.matrixHint.style.display = 'block';
             
-            // ★★★ 關鍵修改：Grid 欄位數 = unit (每排幾顆) ★★★
-            // 這樣畫出來就是：寬度為 unit，高度為 quantity
             els.matrixBox.style.gridTemplateColumns = `repeat(${unit}, 1fr)`;
             
-            // ★★★ 關鍵修改：文字邏輯翻轉 ★★★
-            // n1(unit) 顆，n2(quantity) 排
             const hintHTML = `<ruby>每<rt>ㄇㄟˇ</rt></ruby> <ruby>排<rt>ㄆㄞˊ</rt></ruby> <ruby>${unit}<rt> </rt></ruby> <ruby>顆<rt>ㄎㄜ</rt></ruby>，<br><ruby>共<rt>ㄍㄨㄥˋ</rt></ruby><ruby>有<rt>ㄧㄡˇ</rt></ruby> <ruby>${quantity}<rt> </rt></ruby> <ruby>排<rt>ㄆㄞˊ</rt></ruby>`;
             
             els.matrixHint.innerHTML = hintHTML;
@@ -509,6 +500,8 @@
         function restartLevel() { startGame(state.level); }
         function goToNextLevel() { state.level++; startGame(state.level); }
         function backToMode() { state.isPlaying = false; Object.values(els.screens).forEach(el => el.classList.add('hidden')); els.screens.mode.classList.remove('hidden'); }
+        
+        console.log("程式載入完成！");
     </script>
 </body>
 </html>
