@@ -458,4 +458,57 @@
             els.matrixBox.style.display = 'grid'; els.matrixHint.style.display = 'block';
             
             // ★★★ 關鍵修改：Grid 欄位數 = unit (每排幾顆) ★★★
-            //
+            // 這樣畫出來就是：寬度為 unit，高度為 quantity
+            els.matrixBox.style.gridTemplateColumns = `repeat(${unit}, 1fr)`;
+            
+            // ★★★ 關鍵修改：文字邏輯翻轉 ★★★
+            // n1(unit) 顆，n2(quantity) 排
+            const hintHTML = `<ruby>每<rt>ㄇㄟˇ</rt></ruby> <ruby>排<rt>ㄆㄞˊ</rt></ruby> <ruby>${unit}<rt> </rt></ruby> <ruby>顆<rt>ㄎㄜ</rt></ruby>，<br><ruby>共<rt>ㄍㄨㄥˋ</rt></ruby><ruby>有<rt>ㄧㄡˇ</rt></ruby> <ruby>${quantity}<rt> </rt></ruby> <ruby>排<rt>ㄆㄞˊ</rt></ruby>`;
+            
+            els.matrixHint.innerHTML = hintHTML;
+            for(let i=0; i < unit * quantity; i++) {
+                const dot = document.createElement('div'); dot.className = 'matrix-img'; els.matrixBox.appendChild(dot);
+            }
+        }
+
+        function generateOptions(correct) {
+            els.options.innerHTML = '';
+            let opts = new Set(); opts.add(correct);
+            while(opts.size < 4) {
+                let offset = Math.floor(Math.random() * 5) - 2; if(offset === 0) offset = 3;
+                let fake = correct + (offset * (Math.random() > 0.5 ? 1 : -1));
+                if(fake > 0 && fake !== correct) opts.add(fake); else opts.add(correct + Math.floor(Math.random()*10)+1);
+            }
+            let optsArr = Array.from(opts).sort(() => Math.random() - 0.5);
+            optsArr.forEach(val => {
+                const btn = document.createElement('div'); btn.className = 'ans-btn'; btn.innerText = val;
+                btn.addEventListener('pointerdown', (e) => checkAnswer(val, e.target)); els.options.appendChild(btn);
+            });
+        }
+
+        function checkAnswer(val, btn) {
+            if(!state.isPlaying) return;
+            if(val === state.answer) {
+                playSound('correct'); state.score += 100; state.levelProgress++; state.energy += 10;
+                els.score.innerText = state.score; updateUI();
+                els.hero.classList.add('hero-shoot'); setTimeout(() => els.hero.classList.remove('hero-shoot'), 200);
+                let target = LEVEL_TARGETS[state.level];
+                if(state.levelProgress >= target) { if(state.level < 3) showLevelUp(); else showVictory(); } else nextQuestion();
+            } else {
+                playSound('wrong'); state.energy -= 20; updateUI();
+                els.boom.classList.remove('boom-anim'); void els.boom.offsetWidth; els.boom.classList.add('boom-anim');
+                els.hero.classList.add('hero-damage'); setTimeout(() => els.hero.classList.remove('hero-damage'), 500);
+                btn.classList.add('wrong-shake'); setTimeout(() => btn.classList.remove('wrong-shake'), 400);
+                if(state.energy <= 0) setTimeout(gameOver, 800);
+            }
+        }
+
+        function showLevelUp() { state.isPlaying = false; playSound('levelup'); els.screens.levelup.classList.remove('hidden'); }
+        function showVictory() { state.isPlaying = false; document.getElementById('victory-score').innerText = state.score; playSound('victory'); els.screens.victory.classList.remove('hidden'); }
+        function gameOver() { state.isPlaying = false; playSound('gameover'); els.screens.fail.classList.remove('hidden'); }
+        function restartLevel() { startGame(state.level); }
+        function goToNextLevel() { state.level++; startGame(state.level); }
+        function backToMode() { state.isPlaying = false; Object.values(els.screens).forEach(el => el.classList.add('hidden')); els.screens.mode.classList.remove('hidden'); }
+    </script>
+</body>
+</html>
