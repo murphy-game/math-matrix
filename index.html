@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>機甲矩陣 v1.9 (除錯修復版)</title>
+    <title>機甲矩陣 v2.0 (幼兒優化版)</title>
     <style>
         :root {
             --primary: #00d2d3;
@@ -62,7 +62,7 @@
 
         /* 能量條 */
         .energy-container {
-            width: 100%; height: 15px; background: #333;
+            width: 100%; height: 18px; background: #333;
             border: 2px solid #fff; border-radius: 10px;
             margin-top: 5px; position: relative; overflow: hidden;
             box-shadow: 0 5px 10px rgba(0,0,0,0.3);
@@ -88,12 +88,14 @@
         }
 
         #hero-img {
-            max-height: 8vh; width: auto; object-fit: contain;
+            max-height: 10vh; width: auto; object-fit: contain;
             filter: drop-shadow(0 0 10px rgba(0,210,211,0.5));
             margin-bottom: 5px; z-index: 5;
-            transition: transform 0.1s;
+            transition: transform 0.2s;
             flex-shrink: 1;
         }
+        /* 補上英雄射擊動畫 */
+        .hero-shoot { transform: scale(1.2) translateY(-10px); filter: drop-shadow(0 0 20px #feca57) !important; }
 
         .math-display {
             font-size: 3rem; font-weight: 900; color: #fff;
@@ -105,7 +107,7 @@
         .operator { color: var(--accent); }
 
         .matrix-container {
-            display: grid; gap: 4px; padding: 8px;
+            display: grid; gap: 6px; padding: 10px;
             background: var(--matrix-bg);
             border: 2px solid var(--primary);
             border-radius: 10px;
@@ -118,29 +120,29 @@
         }
         
         .matrix-img {
-            width: 18px; height: 18px;
+            width: 20px; height: 20px;
             background-image: url('energy.png');
             background-color: var(--primary);
             background-size: cover; border-radius: 4px;
-            filter: drop-shadow(0 0 2px var(--primary));
+            filter: drop-shadow(0 0 3px var(--primary));
         }
 
         #matrix-hint {
             color: #eee; 
-            font-size: 1.6rem; 
+            font-size: 1.5rem; 
             margin-bottom: 2px;
             text-align: center; 
-            line-height: 2.0; 
-            background: rgba(0,0,0,0.4); padding: 5px 15px; border-radius: 15px;
+            line-height: 1.8; 
+            background: rgba(0,0,0,0.5); padding: 5px 15px; border-radius: 15px;
             flex-shrink: 0;
             white-space: normal;
         }
         ruby { ruby-align: center; margin: 0 2px; }
         rt { 
-            font-size: 0.75em; 
+            font-size: 0.7em; 
             color: var(--accent); 
             font-weight: normal; 
-            transform: translateY(-5px); 
+            transform: translateY(-3px); 
         }
 
         #boom-img {
@@ -156,16 +158,16 @@
         }
 
         .options-grid {
-            width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+            width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
             margin-bottom: 10px;
             flex-shrink: 0;
         }
         .ans-btn {
-            background: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 0.95);
             border: 3px solid #fff; border-bottom: 6px solid #ccc;
             border-radius: 15px;
-            font-size: 2rem; font-weight: bold; color: #333;
-            padding: 10px;
+            font-size: 2.2rem; font-weight: bold; color: #333;
+            padding: 12px;
             cursor: pointer;
             transition: all 0.1s;
             display: flex; justify-content: center; align-items: center;
@@ -203,12 +205,12 @@
         #result-screen img { margin-bottom: 10px; }
 
         @media (max-height: 700px) {
-            #hero-img { max-height: 6vh; }
-            .math-display { font-size: 2.5rem; margin: 2px 0; }
+            #hero-img { max-height: 7vh; }
+            .math-display { font-size: 2.2rem; margin: 2px 0; }
             .ans-btn { font-size: 1.8rem; padding: 8px; }
-            .matrix-container { gap: 2px; padding: 5px; }
-            .matrix-img { width: 14px; height: 14px; }
-            #matrix-hint { font-size: 1.4rem; } 
+            .matrix-container { gap: 3px; padding: 5px; }
+            .matrix-img { width: 15px; height: 15px; }
+            #matrix-hint { font-size: 1.2rem; } 
         }
     </style>
 </head>
@@ -232,8 +234,8 @@
         <div id="progress-text" class="progress-text">進度: 0 / 10</div>
 
         <div class="question-zone">
-            <img id="boom-img" src="boom.png">
-            <img id="hero-img" src="hero.png">
+            <img id="boom-img" src="boom.png" alt="boom">
+            <img id="hero-img" src="hero.png" alt="hero">
             
             <div class="math-display">
                 <span id="num1">3</span>
@@ -250,49 +252,55 @@
         <div class="options-grid" id="options-box"></div>
     </div>
 
+    <!-- 模式選單 -->
     <div id="mode-screen" class="overlay-screen">
-        <h1 style="color: var(--primary);">機甲矩陣</h1>
-        <p>圖像理解 • 能量挑戰</p>
+        <h1 style="color: var(--primary); font-size: 2.5rem; margin-bottom: 5px;">機甲矩陣</h1>
+        <p style="font-size: 1.2rem; color: #ccc;">圖像理解 • 能量挑戰</p>
         <button class="menu-btn" onclick="startGame(1)">🟢 Lv1 基礎充能 <span class="level-tag">專練 2, 5, 10 的乘法</span></button>
         <button class="menu-btn" onclick="startGame(2)">🟡 Lv2 核心運轉 <span class="level-tag">專練 3, 4, 6 等中階乘法</span></button>
-        <button class="menu-btn" onclick="startGame(3)">🔴 Lv3 極限超頻 <span class="level-tag">7, 8, 9 與混合挑戰</span></button>
+        <button class="menu-btn" onclick="startGame(3)">🔴 Lv3 極限超頻 <span class="level-tag">7, 8, 9 與挑戰模式</span></button>
     </div>
 
+    <!-- 升級 -->
     <div id="levelup-screen" class="overlay-screen hidden">
         <h1 style="color: #f1c40f;">🎉 充能完成！</h1>
-        <img src="hero.png" style="width: 150px; filter: drop-shadow(0 0 20px gold);">
-        <p>乘法核心已升級！</p>
+        <img src="hero.png" style="width: 130px; filter: drop-shadow(0 0 20px gold);" alt="hero">
+        <p style="font-size: 1.3rem;">乘法核心已升級！</p>
         <button class="menu-btn" onclick="goToNextLevel()">🚀 前往下一關</button>
     </div>
 
+    <!-- 勝利 -->
     <div id="victory-screen" class="overlay-screen hidden">
         <h1 style="color: #2ed573;">🎉 矩陣建構完成！</h1>
-        <img src="win.png" style="width: 150px; margin-bottom: 20px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-        <div style="font-size: 5rem; display:none;">👑</div>
-        <p>你已經精通九九乘法了！</p>
-        <p>最終得分: <span id="victory-score" style="color:#f1c40f">0</span></p>
+        <img src="win.png" style="width: 140px; margin-bottom: 10px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" alt="win">
+        <div style="font-size: 4rem; display:none;">👑</div>
+        <p style="font-size: 1.2rem;">你已經精通九九乘法了！</p>
+        <p style="font-size: 1.4rem;">最終得分: <span id="victory-score" style="color:#f1c40f">0</span></p>
         <button class="menu-btn" onclick="backToMode()">⏮ 回到首頁</button>
     </div>
 
+    <!-- 失敗 -->
     <div id="fail-screen" class="overlay-screen hidden">
         <h1 style="color: #ff4757;">⚠️ 能量耗盡</h1>
-        <img src="lose.png" style="width: 150px; margin: 20px 0;">
-        <p>護盾已歸零，機甲需要修復！</p>
+        <img src="lose.png" style="width: 130px; margin: 15px 0;" alt="lose">
+        <p style="font-size: 1.2rem;">護盾已歸零，機甲需要修復！</p>
         <button class="menu-btn" onclick="restartLevel()">🔧 維修並重試</button>
     </div>
 
+    <!-- 休息 -->
     <div id="rest-screen" class="overlay-screen hidden">
-        <div style="font-size: 3rem;">👀</div>
-        <h1>眼睛休息時間</h1>
+        <div style="font-size: 4rem;">👀</div>
+        <h2>眼睛休息時間</h2>
         <p>已經特訓 15 分鐘囉！</p>
         <p>機甲需要冷卻，請讓眼睛休息一下。</p>
     </div>
 
     <script>
-        console.log("程式開始載入 v1.9...");
+        console.log("程式開始載入 v2.0...");
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         let audioCtx;
         let voiceEnabled = true;
+        let isProcessingAnswer = false; // 防連點鎖定
 
         document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
         document.addEventListener('dblclick', function(e) { e.preventDefault(); }, { passive: false });
@@ -341,11 +349,13 @@
                 gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.4);
             } else if(type === 'levelup') {
                 playArpeggio([523, 659, 784, 1046]); 
-                speakText("耶！晉級了！"); return;
+                speakText("太棒了！晉級囉！"); return;
             } else if(type === 'victory') {
-                playArpeggio([523, 523, 523, 659, 784, 1046, 1318], 0.15); return;
+                playArpeggio([523, 523, 523, 659, 784, 1046, 1318], 0.15); 
+                speakText("太厲害了！你通關了！"); return;
             } else if(type === 'gameover') {
-                playArpeggio([300, 250, 200, 150], 0.2); return;
+                playArpeggio([300, 250, 200, 150], 0.2); 
+                speakText("加油，再試一次吧！"); return;
             }
             osc.connect(gain); gain.connect(audioCtx.destination);
             osc.start(); osc.stop(audioCtx.currentTime + 0.4);
@@ -368,33 +378,40 @@
 
         function speakText(text) {
             if(!voiceEnabled || !window.speechSynthesis) return;
+            window.speechSynthesis.cancel();
             setTimeout(() => {
                 const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'zh-TW'; utterance.rate = 1; utterance.pitch = 1.4;
+                utterance.lang = 'zh-TW'; utterance.rate = 1; utterance.pitch = 1.3;
                 window.speechSynthesis.speak(utterance);
-            }, 500);
+            }, 100);
         }
 
-        function speakQuestion(n1, n2) {
-            if(!voiceEnabled || !window.speechSynthesis) return;
-            window.speechSynthesis.cancel();
-            
-            const qText = `${n1} 乘 ${n2} 等於`;
-            const utt1 = new SpeechSynthesisUtterance(qText);
-            utt1.lang = 'zh-TW'; utt1.rate = 0.9;
-            
-            if(state.level < 3) {
-                const hintText = `也就是每排 ${n1} 顆，共有 ${n2} 排`;
-                const utt2 = new SpeechSynthesisUtterance(hintText);
-                utt2.lang = 'zh-TW'; utt2.rate = 0.9;
-                utt1.onend = () => { setTimeout(() => window.speechSynthesis.speak(utt2), 300); };
-            }
-            window.speechSynthesis.speak(utt1);
-        }
+       	function speakQuestion(n1, n2) {
+    			if(!voiceEnabled || !window.speechSynthesis) return;
+	   		window.speechSynthesis.cancel();
+    
+  			// 將「乘」替換為同音字「成」，強制語音發音為 ㄔㄥˊ
+   			const qText = `${n1} 成以 ${n2}`;
+	  		const utt1 = new SpeechSynthesisUtterance(qText);
+  			utt1.lang = 'zh-TW'; 
+   			utt1.rate = 0.95;
+    
+    		if(state.level < 3) {
+		        const hintText = `每排 ${n1} 顆，共有 ${n2} 排`;
+		        const utt2 = new SpeechSynthesisUtterance(hintText);
+		        utt2.lang = 'zh-TW'; 
+		        utt2.rate = 0.9;
+		        utt1.onend = () => { 
+		            setTimeout(() => window.speechSynthesis.speak(utt2), 200); 
+		        };
+    		}
+		window.speechSynthesis.speak(utt1);
+	}
 
         function toggleVoice() {
             voiceEnabled = !voiceEnabled;
             document.getElementById('voice-btn').innerText = voiceEnabled ? '🗣️' : '🔇';
+            if(!voiceEnabled && window.speechSynthesis) window.speechSynthesis.cancel();
         }
 
         let state = { level: 1, score: 0, energy: 100, answer: 0, isPlaying: false, levelProgress: 0 };
@@ -412,9 +429,9 @@
         };
 
         function startGame(lv) {
-            console.log("遊戲開始: Lv" + lv);
             initAudio(); 
             state.level = lv; state.score = 0; state.energy = 100; state.levelProgress = 0; state.isPlaying = true;
+            isProcessingAnswer = false;
             Object.values(els.screens).forEach(el => el.classList.add('hidden'));
             updateUI(); nextQuestion();
         }
@@ -430,6 +447,7 @@
 
         function nextQuestion() {
             if(!state.isPlaying) return;
+            isProcessingAnswer = false;
             let n1, n2;
             const poolLv1 = [2, 5, 10]; const poolLv2 = [3, 4, 6]; 
             if(state.level === 1) { n1 = poolLv1[Math.floor(Math.random() * poolLv1.length)]; n2 = Math.floor(Math.random() * 9) + 1; } 
@@ -440,7 +458,7 @@
             }
             state.answer = n1 * n2;
             els.num1.innerText = n1; els.num2.innerText = n2;
-            els.boom.classList.remove('boom-anim'); els.hero.classList.remove('hero-damage');
+            els.boom.classList.remove('boom-anim'); els.hero.classList.remove('hero-damage', 'hero-shoot');
             
             renderMatrix(n1, n2); 
             generateOptions(state.answer); 
@@ -478,19 +496,38 @@
         }
 
         function checkAnswer(val, btn) {
-            if(!state.isPlaying) return;
+            if(!state.isPlaying || isProcessingAnswer) return;
+            isProcessingAnswer = true; // 防連點
+
             if(val === state.answer) {
                 playSound('correct'); state.score += 100; state.levelProgress++; state.energy += 10;
                 els.score.innerText = state.score; updateUI();
-                els.hero.classList.add('hero-shoot'); setTimeout(() => els.hero.classList.remove('hero-shoot'), 200);
+                
+                els.hero.classList.add('hero-shoot');
+                
                 let target = LEVEL_TARGETS[state.level];
-                if(state.levelProgress >= target) { if(state.level < 3) showLevelUp(); else showVictory(); } else nextQuestion();
+                setTimeout(() => {
+                    if(state.levelProgress >= target) { 
+                        if(state.level < 3) showLevelUp(); else showVictory(); 
+                    } else {
+                        nextQuestion(); 
+                    }
+                }, 600);
             } else {
                 playSound('wrong'); state.energy -= 20; updateUI();
                 els.boom.classList.remove('boom-anim'); void els.boom.offsetWidth; els.boom.classList.add('boom-anim');
-                els.hero.classList.add('hero-damage'); setTimeout(() => els.hero.classList.remove('hero-damage'), 500);
-                btn.classList.add('wrong-shake'); setTimeout(() => btn.classList.remove('wrong-shake'), 400);
-                if(state.energy <= 0) setTimeout(gameOver, 800);
+                els.hero.classList.add('hero-damage'); 
+                btn.classList.add('wrong-shake'); 
+                
+                setTimeout(() => {
+                    els.hero.classList.remove('hero-damage');
+                    btn.classList.remove('wrong-shake');
+                    if(state.energy <= 0) {
+                        gameOver();
+                    } else {
+                        isProcessingAnswer = false; // 答錯後允許重新選擇
+                    }
+                }, 500);
             }
         }
 
@@ -499,9 +536,12 @@
         function gameOver() { state.isPlaying = false; playSound('gameover'); els.screens.fail.classList.remove('hidden'); }
         function restartLevel() { startGame(state.level); }
         function goToNextLevel() { state.level++; startGame(state.level); }
-        function backToMode() { state.isPlaying = false; Object.values(els.screens).forEach(el => el.classList.add('hidden')); els.screens.mode.classList.remove('hidden'); }
-        
-        console.log("程式載入完成！");
+        function backToMode() { 
+            state.isPlaying = false; 
+            if(window.speechSynthesis) window.speechSynthesis.cancel();
+            Object.values(els.screens).forEach(el => el.classList.add('hidden')); 
+            els.screens.mode.classList.remove('hidden'); 
+        }
     </script>
 </body>
 </html>
