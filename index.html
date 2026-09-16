@@ -2,546 +2,379 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>機甲矩陣 v2.0 (幼兒優化版)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>機甲矩陣 - 乘法空間特訓 📐</title>
     <style>
         :root {
-            --primary: #00d2d3;
-            --accent: #feca57;
-            --danger: #ff4757;
-            --matrix-bg: rgba(0, 210, 211, 0.15);
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --accent-cyan: #38bdf8;
+            --accent-green: #4ade80;
+            --accent-yellow: #facc15;
+            --accent-pink: #f472b6;
+            --text-color: #f8fafc;
+            --btn-bg: #334155;
         }
 
-        * { 
-            box-sizing: border-box; 
-            user-select: none; -webkit-user-select: none; 
-            touch-action: manipulation;
-        }
+        * { box-sizing: border-box; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
 
         body {
-            font-family: "Segoe UI", Roboto, "BiauKai", sans-serif;
-            background-color: #2f3640;
-            margin: 0;
-            overflow: hidden;
+            font-family: "Chalkboard SE", "Comic Sans MS", "微軟正黑體", sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0; padding: 0;
             display: flex; justify-content: center; align-items: center;
             min-height: 100vh; min-height: 100dvh;
-            position: fixed; width: 100%; height: 100%;
+            overflow: hidden;
         }
 
-        .battle-bg {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: -2; background-size: cover; background-position: center; opacity: 0.5;
-            pointer-events: none;
-        }
-
-        .container {
-            width: 100%; max-width: 600px;
-            height: 100%;
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: space-between;
-            padding: 10px 20px max(15px, env(safe-area-inset-bottom));
+        .app-container {
+            width: 100%; max-width: 420px; height: 100vh; height: 100dvh;
+            display: flex; flex-direction: column; justify-content: space-between;
+            padding: 10px 15px;
+            padding-bottom: max(12px, env(safe-area-inset-bottom));
             position: relative;
         }
 
-        /* HUD */
+        /* 頂部 HUD */
         .hud {
-            width: 100%; display: flex; justify-content: space-between; align-items: center;
-            color: white; font-size: 1rem; font-weight: bold;
-            text-shadow: 0 0 5px var(--primary);
-            z-index: 10; margin-top: 5px;
-            background: rgba(0,0,0,0.4); border-radius: 15px; padding: 5px 15px;
-            flex-shrink: 0;
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(30, 41, 59, 0.8); padding: 6px 12px; border-radius: 16px;
+            border: 1px solid rgba(56, 189, 248, 0.3); backdrop-filter: blur(5px);
         }
-        
-        .icon-btn {
-            background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.5);
-            color: white; border-radius: 8px; cursor: pointer;
-            padding: 5px 10px; font-size: 1.1rem; transition: background 0.2s;
-            margin-left: 5px;
+        .hud-btn-group { display: flex; gap: 6px; }
+        .hud-icon-btn {
+            background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff; width: 34px; height: 34px; border-radius: 50%; font-size: 0.95rem;
+            cursor: pointer; display: flex; justify-content: center; align-items: center;
         }
+        .score-box { text-align: right; }
+        .score-box div { font-size: 0.65rem; color: #94a3b8; }
+        .score-box span { font-size: 0.95rem; font-weight: bold; color: var(--accent-cyan); }
+        .score-box .high-score { color: var(--accent-yellow); margin-right: 4px; }
 
-        /* 能量條 */
-        .energy-container {
-            width: 100%; height: 18px; background: #333;
-            border: 2px solid #fff; border-radius: 10px;
-            margin-top: 5px; position: relative; overflow: hidden;
-            box-shadow: 0 5px 10px rgba(0,0,0,0.3);
-            flex-shrink: 0;
-        }
-        .energy-bar {
-            width: 100%; height: 100%; background: linear-gradient(90deg, #f1c40f, #2ed573);
-            transition: width 0.3s ease-out, background 0.3s;
-        }
         .progress-text {
-            color: var(--accent); font-weight: bold; margin-top: 2px; font-size: 1rem;
-            text-shadow: 0 2px 2px rgba(0,0,0,0.5);
-            flex-shrink: 0;
+            text-align: center; font-size: 0.85rem; color: var(--accent-yellow);
+            font-weight: bold; margin: 4px 0;
         }
 
-        /* 遊戲區 */
-        .question-zone {
-            flex: 1; width: 100%;
-            display: flex; flex-direction: column;
-            justify-content: center; align-items: center;
-            position: relative;
-            min-height: 0;
+        /* 主遊戲區域 */
+        .main-game-area {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            flex: 1; width: 100%; min-height: 0;
         }
 
-        #hero-img {
-            max-height: 10vh; width: auto; object-fit: contain;
-            filter: drop-shadow(0 0 10px rgba(0,210,211,0.5));
-            margin-bottom: 5px; z-index: 5;
-            transition: transform 0.2s;
-            flex-shrink: 1;
-        }
-        /* 補上英雄射擊動畫 */
-        .hero-shoot { transform: scale(1.2) translateY(-10px); filter: drop-shadow(0 0 20px #feca57) !important; }
-
-        .math-display {
-            font-size: 3rem; font-weight: 900; color: #fff;
-            text-shadow: 0 5px 0 #222, 0 0 20px var(--primary);
-            margin: 5px 0; letter-spacing: 2px;
-            display: flex; align-items: center; gap: 10px;
-            flex-shrink: 0;
-        }
-        .operator { color: var(--accent); }
-
-        .matrix-container {
-            display: grid; gap: 6px; padding: 10px;
-            background: var(--matrix-bg);
-            border: 2px solid var(--primary);
-            border-radius: 10px;
-            margin-bottom: 5px;
-            transition: all 0.3s;
-            justify-content: center; align-content: center;
-            flex-shrink: 1;
-            max-height: 25vh; 
-            overflow-y: auto;
-        }
-        
-        .matrix-img {
-            width: 20px; height: 20px;
-            background-image: url('energy.png');
-            background-color: var(--primary);
-            background-size: cover; border-radius: 4px;
-            filter: drop-shadow(0 0 3px var(--primary));
+        .question-title {
+            font-size: 1.2rem; font-weight: bold; color: var(--accent-cyan);
+            margin-bottom: 8px; text-align: center;
         }
 
-        #matrix-hint {
-            color: #eee; 
-            font-size: 1.5rem; 
-            margin-bottom: 2px;
-            text-align: center; 
-            line-height: 1.8; 
-            background: rgba(0,0,0,0.5); padding: 5px 15px; border-radius: 15px;
-            flex-shrink: 0;
-            white-space: normal;
-        }
-        ruby { ruby-align: center; margin: 0 2px; }
-        rt { 
-            font-size: 0.7em; 
-            color: var(--accent); 
-            font-weight: normal; 
-            transform: translateY(-3px); 
+        /* 矩陣畫布/容器 */
+        .matrix-card {
+            background: var(--card-bg); border: 2px solid var(--accent-cyan);
+            border-radius: 20px; padding: 12px; width: 100%; max-width: 280px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            box-shadow: 0 8px 25px rgba(56, 189, 248, 0.15); margin-bottom: 8px;
         }
 
-        #boom-img {
-            position: absolute; top: 40%; left: 50%;
-            transform: translate(-50%, -50%) scale(0);
-            width: 250px; max-width: 90%; z-index: 20; opacity: 0; pointer-events: none;
-        }
-        .boom-anim { animation: boomPop 0.6s forwards; }
-        @keyframes boomPop {
-            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
-            10% { opacity: 1; transform: translate(-50%, -50%) scale(1.0); }
-            100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+        .matrix-grid {
+            display: grid; gap: 4px; padding: 6px; background: #0f172a; border-radius: 12px;
         }
 
+        .matrix-cell {
+            width: 22px; height: 22px; background: #1e293b; border-radius: 4px;
+            transition: all 0.2s; border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .matrix-cell.active {
+            background: var(--accent-cyan);
+            box-shadow: 0 0 8px var(--accent-cyan);
+            border-color: #fff;
+        }
+
+        /* 4 個選項區域 */
         .options-grid {
-            width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
-            margin-bottom: 10px;
-            flex-shrink: 0;
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-top: auto;
         }
-        .ans-btn {
-            background: rgba(255, 255, 255, 0.95);
-            border: 3px solid #fff; border-bottom: 6px solid #ccc;
-            border-radius: 15px;
-            font-size: 2.2rem; font-weight: bold; color: #333;
-            padding: 12px;
-            cursor: pointer;
-            transition: all 0.1s;
+
+        .opt-btn {
+            background: var(--btn-bg); border: none; border-bottom: 4px solid #1e293b;
+            border-radius: 16px; padding: 14px 0; font-size: 1.4rem; font-weight: bold;
+            color: #fff; cursor: pointer; transition: all 0.08s ease;
             display: flex; justify-content: center; align-items: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
-        .ans-btn:active { transform: translateY(4px); border-bottom: 3px solid #ccc; background: #ddd; }
-        .wrong-shake { animation: shakeBtn 0.4s; background: #ff4757 !important; color: white !important; }
-        @keyframes shakeBtn { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
-        .hero-damage { animation: shakeHero 0.5s; filter: sepia(1) hue-rotate(-50deg) saturate(3) !important; }
-        @keyframes shakeHero {
-            0%, 100% { transform: translateX(0); }
-            20% { transform: translateX(-10px); }
-            40% { transform: translateX(10px); }
-            60% { transform: translateX(-10px); }
-            80% { transform: translateX(10px); }
-        }
+        .opt-btn:active { transform: translateY(2px); border-bottom-width: 2px; background: #475569; }
+        .opt-btn.correct { background: var(--accent-green) !important; color: #0f172a !important; }
+        .opt-btn.wrong { background: #ef4444 !important; color: #fff !important; }
 
-        .overlay-screen {
+        /* Modal 蓋板 */
+        .modal {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95);
-            display: flex; flex-direction: column;
-            justify-content: center; align-items: center;
-            z-index: 100; color: white; text-align: center;
-            padding: 20px;
+            background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(5px);
+            z-index: 100; display: flex; justify-content: center; align-items: center;
         }
-        .menu-btn {
-            background: transparent; border: 2px solid var(--primary);
-            color: white; padding: 15px 30px; margin: 10px;
-            font-size: 1.3rem; border-radius: 50px; cursor: pointer;
-            width: 100%; max-width: 350px; transition: all 0.2s;
+        .modal-card {
+            background: var(--card-bg); border: 3px solid var(--accent-cyan);
+            border-radius: 20px; padding: 20px; width: 85%; max-width: 320px; text-align: center;
         }
-        .menu-btn:active { background: var(--primary); color: black; transform: scale(0.95); }
-        .level-tag { font-size: 0.9rem; opacity: 0.8; display: block; margin-top: 5px; color: #ffeb3b; }
+        .start-btn {
+            background: linear-gradient(135deg, #38bdf8, #818cf8);
+            border: none; border-bottom: 4px solid #0284c7; color: #fff;
+            font-size: 1.2rem; font-weight: bold; padding: 12px 25px; border-radius: 50px;
+            margin-top: 15px; cursor: pointer; width: 100%;
+        }
+        .start-btn:active { transform: translateY(2px); border-bottom-width: 2px; }
         .hidden { display: none !important; }
-        
-        #result-screen img { margin-bottom: 10px; }
-
-        @media (max-height: 700px) {
-            #hero-img { max-height: 7vh; }
-            .math-display { font-size: 2.2rem; margin: 2px 0; }
-            .ans-btn { font-size: 1.8rem; padding: 8px; }
-            .matrix-container { gap: 3px; padding: 5px; }
-            .matrix-img { width: 15px; height: 15px; }
-            #matrix-hint { font-size: 1.2rem; } 
-        }
     </style>
 </head>
 <body>
-    <div class="battle-bg" style="background-image: url('bg.png');"></div>
 
-    <div class="container">
+    <div class="app-container">
+        <!-- 頂部 HUD -->
         <div class="hud">
-            <div style="display: flex; align-items: center;">
-                <button class="icon-btn" onclick="backToMode()">⏮ 選單</button>
-                <button class="icon-btn" id="voice-btn" onclick="toggleVoice()">🗣️</button>
+            <div class="hud-btn-group">
+                <button class="hud-icon-btn" id="sound-btn" onclick="toggleSound()" title="音效開關">🔊</button>
+                <button class="hud-icon-btn" id="vibrate-btn" onclick="toggleVibrate()" title="震動開關">📳</button>
+                <button class="hud-icon-btn" onclick="togglePause()" title="暫停遊戲">⏸️</button>
             </div>
-            <div style="display: flex; align-items: center;">
-                <span>Score: <span id="score-display">0</span></span>
+            <div class="score-box">
+                <div>BEST: <span id="high-score" class="high-score">0</span></div>
+                <div>SCORE: <span id="score">0</span></div>
             </div>
         </div>
 
-        <div class="energy-container">
-            <div class="energy-bar" id="energy-bar"></div>
-        </div>
-        <div id="progress-text" class="progress-text">進度: 0 / 10</div>
+        <div class="progress-text">矩陣進度：<span id="current-q-num">1</span> / 25</div>
 
-        <div class="question-zone">
-            <img id="boom-img" src="boom.png" alt="boom">
-            <img id="hero-img" src="hero.png" alt="hero">
-            
-            <div class="math-display">
-                <span id="num1">3</span>
-                <span class="operator">&times;</span>
-                <span id="num2">4</span>
-                <span class="operator">=</span>
-                <span class="operator">?</span>
+        <!-- 主遊戲區域 -->
+        <div class="main-game-area">
+            <div class="question-title" id="question-text">4 × 3 = ?</div>
+
+            <div class="matrix-card">
+                <div class="matrix-grid" id="matrix-grid"></div>
             </div>
-
-            <div id="matrix-box" class="matrix-container"></div>
-            <div id="matrix-hint"></div>
         </div>
 
-        <div class="options-grid" id="options-box"></div>
-    </div>
+        <!-- 4 個選項按鈕 -->
+        <div class="options-grid" id="options-grid"></div>
 
-    <!-- 模式選單 -->
-    <div id="mode-screen" class="overlay-screen">
-        <h1 style="color: var(--primary); font-size: 2.5rem; margin-bottom: 5px;">機甲矩陣</h1>
-        <p style="font-size: 1.2rem; color: #ccc;">圖像理解 • 能量挑戰</p>
-        <button class="menu-btn" onclick="startGame(1)">🟢 Lv1 基礎充能 <span class="level-tag">專練 2, 5, 10 的乘法</span></button>
-        <button class="menu-btn" onclick="startGame(2)">🟡 Lv2 核心運轉 <span class="level-tag">專練 3, 4, 6 等中階乘法</span></button>
-        <button class="menu-btn" onclick="startGame(3)">🔴 Lv3 極限超頻 <span class="level-tag">7, 8, 9 與挑戰模式</span></button>
-    </div>
-
-    <!-- 升級 -->
-    <div id="levelup-screen" class="overlay-screen hidden">
-        <h1 style="color: #f1c40f;">🎉 充能完成！</h1>
-        <img src="hero.png" style="width: 130px; filter: drop-shadow(0 0 20px gold);" alt="hero">
-        <p style="font-size: 1.3rem;">乘法核心已升級！</p>
-        <button class="menu-btn" onclick="goToNextLevel()">🚀 前往下一關</button>
-    </div>
-
-    <!-- 勝利 -->
-    <div id="victory-screen" class="overlay-screen hidden">
-        <h1 style="color: #2ed573;">🎉 矩陣建構完成！</h1>
-        <img src="win.png" style="width: 140px; margin-bottom: 10px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" alt="win">
-        <div style="font-size: 4rem; display:none;">👑</div>
-        <p style="font-size: 1.2rem;">你已經精通九九乘法了！</p>
-        <p style="font-size: 1.4rem;">最終得分: <span id="victory-score" style="color:#f1c40f">0</span></p>
-        <button class="menu-btn" onclick="backToMode()">⏮ 回到首頁</button>
-    </div>
-
-    <!-- 失敗 -->
-    <div id="fail-screen" class="overlay-screen hidden">
-        <h1 style="color: #ff4757;">⚠️ 能量耗盡</h1>
-        <img src="lose.png" style="width: 130px; margin: 15px 0;" alt="lose">
-        <p style="font-size: 1.2rem;">護盾已歸零，機甲需要修復！</p>
-        <button class="menu-btn" onclick="restartLevel()">🔧 維修並重試</button>
-    </div>
-
-    <!-- 休息 -->
-    <div id="rest-screen" class="overlay-screen hidden">
-        <div style="font-size: 4rem;">👀</div>
-        <h2>眼睛休息時間</h2>
-        <p>已經特訓 15 分鐘囉！</p>
-        <p>機甲需要冷卻，請讓眼睛休息一下。</p>
+        <!-- 結算/暫停 Modal -->
+        <div id="game-modal" class="modal hidden">
+            <div class="modal-card">
+                <div style="font-size: 3.5rem; margin-bottom: 10px;" id="modal-icon">📐</div>
+                <h2 id="modal-title" style="color:var(--accent-cyan); margin: 5px 0;">矩陣充能完成</h2>
+                <p id="modal-desc" style="color:#94a3b8; font-size:0.9rem; margin-bottom:15px;">本次訓練得分：0</p>
+                <button class="start-btn" onclick="startGame()">開始矩陣特訓 ⚡</button>
+            </div>
+        </div>
     </div>
 
     <script>
-        console.log("程式開始載入 v2.0...");
+        // Web Audio API 音效與觸控震動控制
         const AudioContext = window.AudioContext || window.webkitAudioContext;
-        let audioCtx;
-        let voiceEnabled = true;
-        let isProcessingAnswer = false; // 防連點鎖定
-
-        document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
-        document.addEventListener('dblclick', function(e) { e.preventDefault(); }, { passive: false });
+        let audioCtx = null;
+        let soundEnabled = true;
+        let vibrateEnabled = true;
 
         function initAudio() {
-            if (!audioCtx) {
-                audioCtx = new AudioContext();
-            }
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
+            if (!audioCtx) audioCtx = new AudioContext();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
         }
 
-        document.body.addEventListener('click', function() { initAudio(); }, { once: true });
-        document.body.addEventListener('touchstart', function() { initAudio(); }, { once: true });
-
-        const LEVEL_TARGETS = { 1: 10, 2: 15, 3: 20 };
-        
-        let totalTimePlayed = 0;
-        setInterval(() => {
-            totalTimePlayed++;
-            if(totalTimePlayed >= 900) {
-                document.getElementById('rest-screen').classList.remove('hidden');
-                state.isPlaying = false;
+        function triggerVibrate(ms = 40) {
+            if (vibrateEnabled && navigator.vibrate) {
+                navigator.vibrate(ms);
             }
-        }, 1000);
+        }
 
         function playSound(type) {
-            if (!audioCtx) initAudio();
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            
+            if (!soundEnabled) return;
+            initAudio();
+            if (!audioCtx) return;
+
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            
-            if(type === 'correct') {
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
+
+            if (type === 'correct') {
                 osc.type = 'sine';
-                osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.1);
-                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.3);
-            } else if(type === 'wrong') {
+                osc.frequency.setValueAtTime(523.25, now);
+                osc.frequency.setValueAtTime(659.25, now + 0.08);
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+                osc.start(now); osc.stop(now + 0.2);
+            } else if (type === 'wrong') {
                 osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-                osc.frequency.linearRampToValueAtTime(50, audioCtx.currentTime + 0.4);
-                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.4);
-            } else if(type === 'levelup') {
-                playArpeggio([523, 659, 784, 1046]); 
-                speakText("太棒了！晉級囉！"); return;
-            } else if(type === 'victory') {
-                playArpeggio([523, 523, 523, 659, 784, 1046, 1318], 0.15); 
-                speakText("太厲害了！你通關了！"); return;
-            } else if(type === 'gameover') {
-                playArpeggio([300, 250, 200, 150], 0.2); 
-                speakText("加油，再試一次吧！"); return;
-            }
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.4);
-        }
-
-        function playArpeggio(notes, speed = 0.1) {
-            if (!audioCtx) initAudio();
-            notes.forEach((freq, i) => {
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.type = 'square';
-                osc.frequency.setValueAtTime(freq, audioCtx.currentTime + i * speed);
-                gain.gain.setValueAtTime(0.1, audioCtx.currentTime + i * speed);
-                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + i * speed + speed);
-                osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.start(audioCtx.currentTime + i * speed);
-                osc.stop(audioCtx.currentTime + i * speed + speed);
-            });
-        }
-
-        function speakText(text) {
-            if(!voiceEnabled || !window.speechSynthesis) return;
-            window.speechSynthesis.cancel();
-            setTimeout(() => {
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'zh-TW'; utterance.rate = 1; utterance.pitch = 1.3;
-                window.speechSynthesis.speak(utterance);
-            }, 100);
-        }
-
-       	function speakQuestion(n1, n2) {
-    			if(!voiceEnabled || !window.speechSynthesis) return;
-	   		window.speechSynthesis.cancel();
-    
-  			// 將「乘」替換為同音字「成」，強制語音發音為 ㄔㄥˊ
-   			const qText = `${n1} 成以 ${n2}`;
-	  		const utt1 = new SpeechSynthesisUtterance(qText);
-  			utt1.lang = 'zh-TW'; 
-   			utt1.rate = 0.95;
-    
-    		if(state.level < 3) {
-		        const hintText = `每排 ${n1} 顆，共有 ${n2} 排`;
-		        const utt2 = new SpeechSynthesisUtterance(hintText);
-		        utt2.lang = 'zh-TW'; 
-		        utt2.rate = 0.9;
-		        utt1.onend = () => { 
-		            setTimeout(() => window.speechSynthesis.speak(utt2), 200); 
-		        };
-    		}
-		window.speechSynthesis.speak(utt1);
-	}
-
-        function toggleVoice() {
-            voiceEnabled = !voiceEnabled;
-            document.getElementById('voice-btn').innerText = voiceEnabled ? '🗣️' : '🔇';
-            if(!voiceEnabled && window.speechSynthesis) window.speechSynthesis.cancel();
-        }
-
-        let state = { level: 1, score: 0, energy: 100, answer: 0, isPlaying: false, levelProgress: 0 };
-        
-        const els = {
-            num1: document.getElementById('num1'), num2: document.getElementById('num2'),
-            matrixBox: document.getElementById('matrix-box'), matrixHint: document.getElementById('matrix-hint'),
-            options: document.getElementById('options-box'), score: document.getElementById('score-display'),
-            hero: document.getElementById('hero-img'), boom: document.getElementById('boom-img'),
-            energyBar: document.getElementById('energy-bar'), progressText: document.getElementById('progress-text'),
-            screens: { 
-                mode: document.getElementById('mode-screen'), levelup: document.getElementById('levelup-screen'),
-                victory: document.getElementById('victory-screen'), fail: document.getElementById('fail-screen')
-            }
-        };
-
-        function startGame(lv) {
-            initAudio(); 
-            state.level = lv; state.score = 0; state.energy = 100; state.levelProgress = 0; state.isPlaying = true;
-            isProcessingAnswer = false;
-            Object.values(els.screens).forEach(el => el.classList.add('hidden'));
-            updateUI(); nextQuestion();
-        }
-
-        function updateUI() {
-            let target = LEVEL_TARGETS[state.level];
-            els.progressText.innerText = `進度: ${state.levelProgress} / ${target}`;
-            if(state.energy < 0) state.energy = 0; if(state.energy > 100) state.energy = 100;
-            els.energyBar.style.width = state.energy + "%";
-            if(state.energy < 30) els.energyBar.style.background = "#ff4757";
-            else els.energyBar.style.background = "linear-gradient(90deg, #f1c40f, #2ed573)";
-        }
-
-        function nextQuestion() {
-            if(!state.isPlaying) return;
-            isProcessingAnswer = false;
-            let n1, n2;
-            const poolLv1 = [2, 5, 10]; const poolLv2 = [3, 4, 6]; 
-            if(state.level === 1) { n1 = poolLv1[Math.floor(Math.random() * poolLv1.length)]; n2 = Math.floor(Math.random() * 9) + 1; } 
-            else if(state.level === 2) { n1 = poolLv2[Math.floor(Math.random() * poolLv2.length)]; n2 = Math.floor(Math.random() * 9) + 1; } 
-            else { 
-                if(Math.random() > 0.3) n1 = Math.floor(Math.random() * 3) + 7; else n1 = Math.floor(Math.random() * 4) + 3; 
-                n2 = Math.floor(Math.random() * 9) + 1; 
-            }
-            state.answer = n1 * n2;
-            els.num1.innerText = n1; els.num2.innerText = n2;
-            els.boom.classList.remove('boom-anim'); els.hero.classList.remove('hero-damage', 'hero-shoot');
-            
-            renderMatrix(n1, n2); 
-            generateOptions(state.answer); 
-            speakQuestion(n1, n2);
-        }
-
-        function renderMatrix(unit, quantity) {
-            els.matrixBox.innerHTML = '';
-            if(state.level === 3) { els.matrixBox.style.display = 'none'; els.matrixHint.style.display = 'none'; return; }
-            els.matrixBox.style.display = 'grid'; els.matrixHint.style.display = 'block';
-            
-            els.matrixBox.style.gridTemplateColumns = `repeat(${unit}, 1fr)`;
-            
-            const hintHTML = `<ruby>每<rt>ㄇㄟˇ</rt></ruby> <ruby>排<rt>ㄆㄞˊ</rt></ruby> <ruby>${unit}<rt> </rt></ruby> <ruby>顆<rt>ㄎㄜ</rt></ruby>，<br><ruby>共<rt>ㄍㄨㄥˋ</rt></ruby><ruby>有<rt>ㄧㄡˇ</rt></ruby> <ruby>${quantity}<rt> </rt></ruby> <ruby>排<rt>ㄆㄞˊ</rt></ruby>`;
-            
-            els.matrixHint.innerHTML = hintHTML;
-            for(let i=0; i < unit * quantity; i++) {
-                const dot = document.createElement('div'); dot.className = 'matrix-img'; els.matrixBox.appendChild(dot);
+                osc.frequency.setValueAtTime(220, now);
+                osc.frequency.linearRampToValueAtTime(110, now + 0.25);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+                osc.start(now); osc.stop(now + 0.25);
             }
         }
 
-        function generateOptions(correct) {
-            els.options.innerHTML = '';
-            let opts = new Set(); opts.add(correct);
-            while(opts.size < 4) {
-                let offset = Math.floor(Math.random() * 5) - 2; if(offset === 0) offset = 3;
-                let fake = correct + (offset * (Math.random() > 0.5 ? 1 : -1));
-                if(fake > 0 && fake !== correct) opts.add(fake); else opts.add(correct + Math.floor(Math.random()*10)+1);
-            }
-            let optsArr = Array.from(opts).sort(() => Math.random() - 0.5);
-            optsArr.forEach(val => {
-                const btn = document.createElement('div'); btn.className = 'ans-btn'; btn.innerText = val;
-                btn.addEventListener('pointerdown', (e) => checkAnswer(val, e.target)); els.options.appendChild(btn);
-            });
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            document.getElementById('sound-btn').innerText = soundEnabled ? '🔊' : '🔇';
         }
 
-        function checkAnswer(val, btn) {
-            if(!state.isPlaying || isProcessingAnswer) return;
-            isProcessingAnswer = true; // 防連點
+        function toggleVibrate() {
+            vibrateEnabled = !vibrateEnabled;
+            document.getElementById('vibrate-btn').innerText = vibrateEnabled ? '📳' : '📴';
+            if (vibrateEnabled) triggerVibrate(30);
+        }
 
-            if(val === state.answer) {
-                playSound('correct'); state.score += 100; state.levelProgress++; state.energy += 10;
-                els.score.innerText = state.score; updateUI();
-                
-                els.hero.classList.add('hero-shoot');
-                
-                let target = LEVEL_TARGETS[state.level];
-                setTimeout(() => {
-                    if(state.levelProgress >= target) { 
-                        if(state.level < 3) showLevelUp(); else showVictory(); 
-                    } else {
-                        nextQuestion(); 
-                    }
-                }, 600);
+        let currentQuestion = 0;
+        let totalQuestions = 25;
+        let score = 0;
+        let highScore = parseInt(localStorage.getItem('matrix_high_score')) || 0;
+        let correctAnswer = 0;
+        let isAnsweringLocked = false;
+
+        let rows = 0, cols = 0;
+        let quizMode = 'show_formula'; // 'show_formula' (看算式找積) 或 'show_matrix' (看圖找算式)
+
+        function generateQuestion() {
+            isAnsweringLocked = false;
+            rows = Math.floor(Math.random() * 8) + 2; // 2 ~ 9
+            cols = Math.floor(Math.random() * 8) + 2; // 2 ~ 9
+            correctAnswer = rows * cols;
+
+            quizMode = Math.random() > 0.5 ? 'show_formula' : 'show_matrix';
+
+            const qText = document.getElementById('question-text');
+            if (quizMode === 'show_formula') {
+                qText.innerText = `${rows} × ${cols} = ?`;
             } else {
-                playSound('wrong'); state.energy -= 20; updateUI();
-                els.boom.classList.remove('boom-anim'); void els.boom.offsetWidth; els.boom.classList.add('boom-anim');
-                els.hero.classList.add('hero-damage'); 
-                btn.classList.add('wrong-shake'); 
-                
-                setTimeout(() => {
-                    els.hero.classList.remove('hero-damage');
-                    btn.classList.remove('wrong-shake');
-                    if(state.energy <= 0) {
-                        gameOver();
-                    } else {
-                        isProcessingAnswer = false; // 答錯後允許重新選擇
-                    }
-                }, 500);
+                qText.innerText = `這塊矩陣是代表哪一個算式？`;
+            }
+
+            document.getElementById('current-q-num').innerText = currentQuestion + 1;
+            renderMatrixGrid();
+            generateOptions();
+        }
+
+        function renderMatrixGrid() {
+            const grid = document.getElementById('matrix-grid');
+            grid.innerHTML = '';
+            grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'matrix-cell active';
+                    grid.appendChild(cell);
+                }
             }
         }
 
-        function showLevelUp() { state.isPlaying = false; playSound('levelup'); els.screens.levelup.classList.remove('hidden'); }
-        function showVictory() { state.isPlaying = false; document.getElementById('victory-score').innerText = state.score; playSound('victory'); els.screens.victory.classList.remove('hidden'); }
-        function gameOver() { state.isPlaying = false; playSound('gameover'); els.screens.fail.classList.remove('hidden'); }
-        function restartLevel() { startGame(state.level); }
-        function goToNextLevel() { state.level++; startGame(state.level); }
-        function backToMode() { 
-            state.isPlaying = false; 
-            if(window.speechSynthesis) window.speechSynthesis.cancel();
-            Object.values(els.screens).forEach(el => el.classList.add('hidden')); 
-            els.screens.mode.classList.remove('hidden'); 
+        function generateOptions() {
+            const grid = document.getElementById('options-grid');
+            grid.innerHTML = '';
+
+            let options = [];
+            if (quizMode === 'show_formula') {
+                options.push(correctAnswer.toString());
+                while (options.length < 4) {
+                    let offset = (Math.floor(Math.random() * 5) + 1) * (Math.random() > 0.5 ? 1 : -1);
+                    let wrongOpt = (correctAnswer + offset).toString();
+                    if (parseInt(wrongOpt) > 0 && !options.includes(wrongOpt)) {
+                        options.push(wrongOpt);
+                    }
+                }
+            } else {
+                const correctFormula = `${rows} × ${cols}`;
+                options.push(correctFormula);
+                while (options.length < 4) {
+                    let r = Math.floor(Math.random() * 8) + 2;
+                    let c = Math.floor(Math.random() * 8) + 2;
+                    let wrongFormula = `${r} × ${c}`;
+                    if (!options.includes(wrongFormula)) {
+                        options.push(wrongFormula);
+                    }
+                }
+            }
+
+            options.sort(() => Math.random() - 0.5);
+
+            options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = 'opt-btn';
+                btn.innerText = opt;
+                btn.onclick = () => checkAnswer(opt, btn);
+                grid.appendChild(btn);
+            });
         }
+
+        function checkAnswer(selected, btn) {
+            if (isAnsweringLocked) return;
+
+            const isCorrect = (quizMode === 'show_formula' && parseInt(selected) === correctAnswer) ||
+                              (quizMode === 'show_matrix' && selected === `${rows} × ${cols}`);
+
+            if (isCorrect) {
+                isAnsweringLocked = true;
+                btn.classList.add('correct');
+                playSound('correct');
+                triggerVibrate(50);
+                score += 10;
+                document.getElementById('score').innerText = score;
+
+                setTimeout(() => {
+                    currentQuestion++;
+                    if (currentQuestion >= totalQuestions) {
+                        endGame();
+                    } else {
+                        generateQuestion();
+                    }
+                }, 400);
+            } else {
+                btn.classList.add('wrong');
+                playSound('wrong');
+                triggerVibrate(100);
+                setTimeout(() => btn.classList.remove('wrong'), 600);
+            }
+        }
+
+        function togglePause() {
+            document.getElementById('modal-icon').innerText = "⏸️";
+            document.getElementById('modal-title').innerText = "矩陣特訓暫停中";
+            document.getElementById('modal-desc').innerText = `當前進度：${currentQuestion + 1} / ${totalQuestions}`;
+            document.getElementById('game-modal').classList.remove('hidden');
+        }
+
+        function endGame() {
+            let isNewHigh = false;
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('matrix_high_score', highScore);
+                isNewHigh = true;
+            }
+
+            document.getElementById('modal-icon').innerText = isNewHigh ? "🏆" : "📐";
+            document.getElementById('modal-title').innerText = isNewHigh ? "🎉 突破新紀錄！" : "矩陣充能完成！";
+            document.getElementById('modal-desc').innerText = `最終總分：${score} (最高紀錄: ${highScore})`;
+            document.getElementById('game-modal').classList.remove('hidden');
+            updateScoreUI();
+        }
+
+        function startGame() {
+            initAudio();
+            currentQuestion = 0;
+            score = 0;
+            updateScoreUI();
+            document.getElementById('game-modal').classList.add('hidden');
+            generateQuestion();
+        }
+
+        function updateScoreUI() {
+            document.getElementById('score').innerText = score;
+            document.getElementById('high-score').innerText = highScore;
+        }
+
+        updateScoreUI();
+        generateQuestion();
     </script>
 </body>
 </html>
