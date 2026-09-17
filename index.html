@@ -7,7 +7,7 @@
     <style>
         :root {
             --bg-color: #0f172a;
-            --card-bg: #1e293b;
+            --card-bg: rgba(30, 41, 59, 0.9);
             --accent-cyan: #38bdf8;
             --accent-green: #4ade80;
             --accent-yellow: #facc15;
@@ -19,7 +19,11 @@
 
         body {
             font-family: "Chalkboard SE", "Comic Sans MS", "微軟正黑體", sans-serif;
-            background-color: var(--bg-color); color: var(--text-color);
+            background-color: var(--bg-color);
+            background-image: url('bg.png');
+            background-size: cover;
+            background-position: center;
+            color: var(--text-color);
             margin: 0; padding: 0; display: flex; justify-content: center; align-items: center;
             min-height: 100vh; min-height: 100dvh; overflow: hidden;
         }
@@ -32,7 +36,7 @@
 
         .hud {
             display: flex; justify-content: space-between; align-items: center;
-            background: rgba(30, 41, 59, 0.8); padding: 6px 12px; border-radius: 16px;
+            background: rgba(30, 41, 59, 0.85); padding: 6px 12px; border-radius: 16px;
             border: 1px solid rgba(56, 189, 248, 0.3); backdrop-filter: blur(5px);
         }
         .hud-btn-group { display: flex; gap: 6px; }
@@ -50,16 +54,28 @@
 
         .main-game-area {
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            flex: 1; width: 100%; min-height: 0;
+            flex: 1; width: 100%; min-height: 0; position: relative;
         }
 
-        .question-title { font-size: 1.15rem; font-weight: bold; color: var(--accent-cyan); margin-bottom: 8px; text-align: center; }
+        /* 機甲英雄舞台與圖片 */
+        .robot-stage {
+            position: relative; width: 100px; height: 100px;
+            display: flex; justify-content: center; align-items: center; margin-bottom: 4px;
+        }
+        .robot-img {
+            max-width: 100%; max-height: 100%; object-fit: contain;
+            filter: drop-shadow(0 6px 12px rgba(56, 189, 248, 0.4));
+            animation: floatRobot 2.5s ease-in-out infinite;
+        }
+        @keyframes floatRobot { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+
+        .question-title { font-size: 1.15rem; font-weight: bold; color: var(--accent-cyan); margin-bottom: 6px; text-align: center; }
 
         .matrix-card {
             background: var(--card-bg); border: 2px solid var(--accent-cyan);
             border-radius: 20px; padding: 12px; width: 100%; max-width: 280px;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            box-shadow: 0 8px 25px rgba(56, 189, 248, 0.15); margin-bottom: 8px;
+            box-shadow: 0 8px 25px rgba(56, 189, 248, 0.2); margin-bottom: 8px; position: relative;
         }
         .matrix-grid { display: grid; gap: 4px; padding: 6px; background: #0f172a; border-radius: 12px; }
         .matrix-cell {
@@ -67,7 +83,18 @@
             transition: all 0.2s; border: 1px solid rgba(255, 255, 255, 0.05);
         }
         .matrix-cell.active { background: var(--accent-cyan); box-shadow: 0 0 8px var(--accent-cyan); border-color: #fff; }
-        .matrix-cell.outline-only { background: transparent; border: 2px solid var(--accent-cyan); } /* Lv3 盲測外框 */
+        .matrix-cell.outline-only { background: transparent; border: 2px solid var(--accent-cyan); }
+
+        /* 答對攻擊/爆炸 Effect Overlay (支援圖檔與 Emoji 兩用) */
+        .boom-effect {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0);
+            width: 180px; height: 180px; pointer-events: none; opacity: 0; z-index: 10;
+            transition: all 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex; justify-content: center; align-items: center;
+        }
+        .boom-effect.active {
+            transform: translate(-50%, -50%) scale(1.2); opacity: 1;
+        }
 
         .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-top: auto; }
         .opt-btn {
@@ -88,6 +115,7 @@
         .modal-card {
             background: var(--card-bg); border: 3px solid var(--accent-cyan);
             border-radius: 20px; padding: 20px; width: 85%; max-width: 320px; text-align: center;
+            box-shadow: 0 10px 30px rgba(56, 189, 248, 0.3);
         }
         .menu-btn {
             background: transparent; border: 2px solid var(--accent-cyan);
@@ -102,6 +130,7 @@
 <body>
 
     <div class="app-container">
+        <!-- Top HUD -->
         <div class="hud">
             <div class="hud-btn-group">
                 <button class="hud-icon-btn" id="sound-btn" onclick="toggleSound()">🔊</button>
@@ -117,10 +146,23 @@
 
         <div class="progress-text">矩陣進度：<span id="current-q-num">1</span> / 25</div>
 
+        <!-- Main Game Area -->
         <div class="main-game-area">
+            <!-- 機甲英雄舞台 -->
+            <div class="robot-stage">
+                <img src="hero.png" id="robot-hero-img" class="robot-img" onerror="this.style.display='none'; document.getElementById('emoji-robot').style.display='block';">
+                <span id="emoji-robot" style="font-size:3.8rem; display:none;">🤖</span>
+            </div>
+
             <div class="question-title" id="question-text">4 × 3 = ?</div>
+            
             <div class="matrix-card">
                 <div class="matrix-grid" id="matrix-grid"></div>
+                <!-- 答對攻擊/爆炸圖檔 -->
+                <div id="boom-box" class="boom-effect">
+                    <img src="boom.png" style="width:100%; height:100%; object-fit:contain;" onerror="this.style.display='none'; document.getElementById('emoji-boom').style.display='block';">
+                    <span id="emoji-boom" style="font-size:4.5rem; display:none;">💥</span>
+                </div>
             </div>
         </div>
 
@@ -129,7 +171,10 @@
         <!-- 難度選擇 Modal -->
         <div id="level-modal" class="modal">
             <div class="modal-card">
-                <div style="font-size: 3rem; margin-bottom: 5px;">📐</div>
+                <div style="height: 80px; display:flex; justify-content:center; align-items:center; margin-bottom:10px;">
+                    <img src="hero.png" style="max-height:100%; object-fit:contain;" onerror="this.style.display='none'; document.getElementById('modal-emoji').style.display='block';">
+                    <span id="modal-emoji" style="font-size:3.5rem; display:none;">📐</span>
+                </div>
                 <h2 style="color:var(--accent-cyan); margin: 5px 0;">乘法矩陣特訓</h2>
                 <p style="color:#94a3b8; font-size:0.85rem; margin-bottom:12px;">請選擇訓練難度</p>
                 <button class="menu-btn" onclick="selectDifficulty(1)">🟢 見習駕駛 <span class="level-tag">小矩陣 (2x2~5x5)</span></button>
@@ -138,10 +183,13 @@
             </div>
         </div>
 
-        <!-- 結算/暫停 Modal -->
+        <!-- 結算/暫停 Modal (支持 win.png / lose.png / energy.png) -->
         <div id="game-modal" class="modal hidden">
             <div class="modal-card">
-                <div style="font-size: 3.5rem; margin-bottom: 10px;" id="modal-icon">📐</div>
+                <div style="height: 100px; display:flex; justify-content:center; align-items:center; margin-bottom:10px;">
+                    <img src="win.png" id="modal-result-img" style="max-height:100%; object-fit:contain;" onerror="this.style.display='none'; document.getElementById('modal-icon-emoji').style.display='block';">
+                    <span id="modal-icon-emoji" style="font-size:3.5rem; display:none;">🏆</span>
+                </div>
                 <h2 id="modal-title" style="color:var(--accent-cyan); margin: 5px 0;">矩陣充能完成</h2>
                 <p id="modal-desc" style="color:#94a3b8; font-size:0.9rem; margin-bottom:15px;">本次得分：0</p>
                 <button class="menu-btn" style="background:var(--accent-cyan); color:#000;" onclick="openLevelSelect()">重新選擇難度 ⚡</button>
@@ -263,6 +311,12 @@
             });
         }
 
+        function triggerBoomEffect() {
+            const boom = document.getElementById('boom-box');
+            boom.classList.add('active');
+            setTimeout(() => boom.classList.remove('active'), 350);
+        }
+
         function checkAnswer(selected, btn) {
             if (isAnsweringLocked) return;
             const isCorrect = (quizMode === 'show_formula' && parseInt(selected) === correctAnswer) ||
@@ -271,6 +325,8 @@
             if (isCorrect) {
                 isAnsweringLocked = true; btn.classList.add('correct');
                 playSound('correct'); triggerVibrate(50);
+                triggerBoomEffect();
+
                 score += 10; document.getElementById('score').innerText = score;
                 setTimeout(() => {
                     currentQuestion++;
@@ -284,7 +340,14 @@
         }
 
         function togglePause() {
-            document.getElementById('modal-icon').innerText = "⏸️";
+            const resultImg = document.getElementById('modal-result-img');
+            const fallbackEmoji = document.getElementById('modal-icon-emoji');
+
+            resultImg.src = 'hero.png';
+            resultImg.style.display = 'block';
+            fallbackEmoji.innerText = "📐";
+            fallbackEmoji.style.display = 'none';
+
             document.getElementById('modal-title').innerText = "特訓暫停中";
             document.getElementById('modal-desc').innerText = `當前進度：${currentQuestion + 1} / ${totalQuestions}`;
             document.getElementById('game-modal').classList.remove('hidden');
@@ -293,8 +356,26 @@
         function endGame() {
             let isNewHigh = false;
             if (score > highScore) { highScore = score; localStorage.setItem('matrix_high_score', highScore); isNewHigh = true; }
-            document.getElementById('modal-icon').innerText = isNewHigh ? "🏆" : "📐";
-            document.getElementById('modal-title').innerText = isNewHigh ? "🎉 突破新紀錄！" : "矩陣充能完成！";
+            
+            const resultImg = document.getElementById('modal-result-img');
+            const fallbackEmoji = document.getElementById('modal-icon-emoji');
+
+            resultImg.style.display = 'block';
+            fallbackEmoji.style.display = 'none';
+
+            // 根據得分觸發不同的過關獎勵圖檔 (win.png / energy.png / lose.png)
+            if (isNewHigh || score >= 200) {
+                resultImg.src = 'win.png';
+                fallbackEmoji.innerText = "🏆";
+            } else if (score >= 150) {
+                resultImg.src = 'energy.png';
+                fallbackEmoji.innerText = "⚡";
+            } else {
+                resultImg.src = 'lose.png';
+                fallbackEmoji.innerText = "💥";
+            }
+
+            document.getElementById('modal-title').innerText = isNewHigh ? "🎉 突破新紀錄！" : (score >= 150 ? "📐 矩陣充能完成！" : "💥 矩陣過熱過載！");
             document.getElementById('modal-desc').innerText = `最終得分：${score} (最高紀錄: ${highScore})`;
             document.getElementById('game-modal').classList.remove('hidden');
             updateScoreUI();
