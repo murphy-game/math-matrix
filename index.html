@@ -57,7 +57,6 @@
             flex: 1; width: 100%; min-height: 0; position: relative;
         }
 
-        /* 機甲英雄舞台與圖片 */
         .robot-stage {
             position: relative; width: 100px; height: 100px;
             display: flex; justify-content: center; align-items: center; margin-bottom: 4px;
@@ -85,16 +84,13 @@
         .matrix-cell.active { background: var(--accent-cyan); box-shadow: 0 0 8px var(--accent-cyan); border-color: #fff; }
         .matrix-cell.outline-only { background: transparent; border: 2px solid var(--accent-cyan); }
 
-        /* 答對攻擊/爆炸 Effect Overlay (支援圖檔與 Emoji 兩用) */
         .boom-effect {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0);
             width: 180px; height: 180px; pointer-events: none; opacity: 0; z-index: 10;
             transition: all 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             display: flex; justify-content: center; align-items: center;
         }
-        .boom-effect.active {
-            transform: translate(-50%, -50%) scale(1.2); opacity: 1;
-        }
+        .boom-effect.active { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
 
         .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-top: auto; }
         .opt-btn {
@@ -130,7 +126,6 @@
 <body>
 
     <div class="app-container">
-        <!-- Top HUD -->
         <div class="hud">
             <div class="hud-btn-group">
                 <button class="hud-icon-btn" id="sound-btn" onclick="toggleSound()">🔊</button>
@@ -146,9 +141,7 @@
 
         <div class="progress-text">矩陣進度：<span id="current-q-num">1</span> / 25</div>
 
-        <!-- Main Game Area -->
         <div class="main-game-area">
-            <!-- 機甲英雄舞台 -->
             <div class="robot-stage">
                 <img src="hero.png" id="robot-hero-img" class="robot-img" onerror="this.style.display='none'; document.getElementById('emoji-robot').style.display='block';">
                 <span id="emoji-robot" style="font-size:3.8rem; display:none;">🤖</span>
@@ -158,7 +151,6 @@
             
             <div class="matrix-card">
                 <div class="matrix-grid" id="matrix-grid"></div>
-                <!-- 答對攻擊/爆炸圖檔 -->
                 <div id="boom-box" class="boom-effect">
                     <img src="boom.png" style="width:100%; height:100%; object-fit:contain;" onerror="this.style.display='none'; document.getElementById('emoji-boom').style.display='block';">
                     <span id="emoji-boom" style="font-size:4.5rem; display:none;">💥</span>
@@ -168,7 +160,6 @@
 
         <div class="options-grid" id="options-grid"></div>
 
-        <!-- 難度選擇 Modal -->
         <div id="level-modal" class="modal">
             <div class="modal-card">
                 <div style="height: 80px; display:flex; justify-content:center; align-items:center; margin-bottom:10px;">
@@ -183,7 +174,6 @@
             </div>
         </div>
 
-        <!-- 結算/暫停 Modal (支持 win.png / lose.png / energy.png) -->
         <div id="game-modal" class="modal hidden">
             <div class="modal-card">
                 <div style="height: 100px; display:flex; justify-content:center; align-items:center; margin-bottom:10px;">
@@ -230,6 +220,7 @@
         let highScore = parseInt(localStorage.getItem('matrix_high_score')) || 0;
         let correctAnswer = 0, isAnsweringLocked = false;
         let rows = 0, cols = 0, quizMode = 'show_formula';
+        let questionPool = []; // 洗牌不放回題庫
 
         function selectDifficulty(diff) {
             currentDifficulty = diff;
@@ -242,17 +233,29 @@
             document.getElementById('level-modal').classList.remove('hidden');
         }
 
+        // 生成矩陣全組合並打亂（絕不重複）
+        function buildQuestionPool() {
+            const raw = [];
+            const minN = 2;
+            const maxN = currentDifficulty === 1 ? 5 : 9;
+
+            for (let r = minN; r <= maxN; r++) {
+                for (let c = minN; c <= maxN; c++) {
+                    raw.push({ r, c, mode: 'show_formula' });
+                    raw.push({ r, c, mode: 'show_matrix' });
+                }
+            }
+            // 完全打亂
+            questionPool = raw.sort(() => Math.random() - 0.5);
+        }
+
         function generateQuestion() {
             isAnsweringLocked = false;
+            if (questionPool.length === 0) buildQuestionPool();
 
-            if (currentDifficulty === 1) { // 2~5
-                rows = Math.floor(Math.random() * 4) + 2; cols = Math.floor(Math.random() * 4) + 2;
-            } else { // 2~9 (Lv2 & Lv3)
-                rows = Math.floor(Math.random() * 8) + 2; cols = Math.floor(Math.random() * 8) + 2;
-            }
-
+            const q = questionPool.pop();
+            rows = q.r; cols = q.c; quizMode = q.mode;
             correctAnswer = rows * cols;
-            quizMode = Math.random() > 0.5 ? 'show_formula' : 'show_matrix';
 
             const qText = document.getElementById('question-text');
             if (quizMode === 'show_formula') {
@@ -275,7 +278,7 @@
                 for (let c = 0; c < cols; c++) {
                     const cell = document.createElement('div');
                     if (currentDifficulty === 3 && (r > 0 && r < rows - 1 && c > 0 && c < cols - 1)) {
-                        cell.className = 'matrix-cell outline-only'; // Lv3 盲測：隱藏內部方塊
+                        cell.className = 'matrix-cell outline-only';
                     } else {
                         cell.className = 'matrix-cell active';
                     }
@@ -342,11 +345,8 @@
         function togglePause() {
             const resultImg = document.getElementById('modal-result-img');
             const fallbackEmoji = document.getElementById('modal-icon-emoji');
-
-            resultImg.src = 'hero.png';
-            resultImg.style.display = 'block';
-            fallbackEmoji.innerText = "📐";
-            fallbackEmoji.style.display = 'none';
+            resultImg.src = 'hero.png'; resultImg.style.display = 'block';
+            fallbackEmoji.innerText = "📐"; fallbackEmoji.style.display = 'none';
 
             document.getElementById('modal-title').innerText = "特訓暫停中";
             document.getElementById('modal-desc').innerText = `當前進度：${currentQuestion + 1} / ${totalQuestions}`;
@@ -359,21 +359,11 @@
             
             const resultImg = document.getElementById('modal-result-img');
             const fallbackEmoji = document.getElementById('modal-icon-emoji');
+            resultImg.style.display = 'block'; fallbackEmoji.style.display = 'none';
 
-            resultImg.style.display = 'block';
-            fallbackEmoji.style.display = 'none';
-
-            // 根據得分觸發不同的過關獎勵圖檔 (win.png / energy.png / lose.png)
-            if (isNewHigh || score >= 200) {
-                resultImg.src = 'win.png';
-                fallbackEmoji.innerText = "🏆";
-            } else if (score >= 150) {
-                resultImg.src = 'energy.png';
-                fallbackEmoji.innerText = "⚡";
-            } else {
-                resultImg.src = 'lose.png';
-                fallbackEmoji.innerText = "💥";
-            }
+            if (isNewHigh || score >= 200) { resultImg.src = 'win.png'; fallbackEmoji.innerText = "🏆"; }
+            else if (score >= 150) { resultImg.src = 'energy.png'; fallbackEmoji.innerText = "⚡"; }
+            else { resultImg.src = 'lose.png'; fallbackEmoji.innerText = "💥"; }
 
             document.getElementById('modal-title').innerText = isNewHigh ? "🎉 突破新紀錄！" : (score >= 150 ? "📐 矩陣充能完成！" : "💥 矩陣過熱過載！");
             document.getElementById('modal-desc').innerText = `最終得分：${score} (最高紀錄: ${highScore})`;
@@ -383,6 +373,7 @@
 
         function startGame() {
             initAudio(); currentQuestion = 0; score = 0;
+            buildQuestionPool();
             updateScoreUI();
             document.getElementById('game-modal').classList.add('hidden');
             generateQuestion();
